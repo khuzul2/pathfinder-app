@@ -1,4 +1,5 @@
 import type { GpxFile } from '../lib/gpxExport';
+import { isNativePlatform, shareGpxNative } from './nativeShare';
 
 /** Trigger a browser download of a single `.gpx` file. */
 export function downloadGpxFile(file: GpxFile, doc: Document = document): void {
@@ -15,16 +16,30 @@ export function downloadGpxFile(file: GpxFile, doc: Document = document): void {
 
 export type ExportResult = 'shared' | 'downloaded';
 
+/** Native-share seam, injectable for tests (defaults to the real Capacitor bridge). */
+export interface NativeShareAdapter {
+  isNative: () => boolean;
+  share: (files: readonly GpxFile[]) => Promise<void>;
+}
+
+const defaultNative: NativeShareAdapter = { isNative: isNativePlatform, share: shareGpxNative };
+
 /**
- * Send the route to another app (COROS). Uses the Web Share API when the platform reports it
- * can share the files, otherwise downloads each `.gpx`. On the web, browsers reject `.gpx`
- * from Web Share (`canShare` → false) so this downloads; the Capacitor Android build supplies
- * a native share that DOES accept the file (ADR-008a; see docs/MANUAL_QA.md).
+ * Send the route to another app (COROS). Priority: (1) the Capacitor Android native share
+ * sheet, which accepts `.gpx` file URIs; (2) the Web Share API when the platform reports it
+ * can share the files; (3) a plain `.gpx` download. On the web, browsers reject `.gpx` from
+ * Web Share (`canShare` → false) so this downloads (ADR-008a; see docs/MANUAL_QA.md).
  */
 export async function shareOrDownloadGpx(
   files: readonly GpxFile[],
-  env: { nav?: Navigator; doc?: Document } = {},
+  env: { nav?: Navigator; doc?: Document; native?: NativeShareAdapter } = {},
 ): Promise<ExportResult> {
+  const native = env.native ?? defaultNative;
+  if (native.isNative()) {
+    await native.share(files);
+    return 'shared';
+  }
+
   const nav = env.nav ?? navigator;
   const doc = env.doc ?? document;
   const shareFiles = files.map(

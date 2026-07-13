@@ -13,11 +13,29 @@ must never be faked green in an automated test. A human runs them at staging / r
 - [ ] OpenWeather account "Calls per day" limit lowered to 1,000 (guarantees $0).
 
 ## Capacitor / Android packaging (not automatable in the loop sandbox)
-- [ ] Wrap with Capacitor: `@capacitor/core` + `@capacitor/android` + `@capacitor/share` +
-      `@capacitor/filesystem`; `npx cap add android`; build the APK (Gradle). The web export
-      (`services/share.ts`) already produces the GPX; the native adapter routes it through
-      `Intent.ACTION_SEND` so the COROS app appears in the share sheet.
-- [ ] Add the Android build to CI once the Gradle project exists.
+
+The Capacitor integration is **in the repo** (P7-1): deps (`@capacitor/core` + `@capacitor/android`
++ `@capacitor/share` + `@capacitor/filesystem` + `@capacitor/cli`), `frontend/capacitor.config.ts`,
+and the native share path (`services/nativeShare.ts`, preferred by `services/share.ts` when
+`Capacitor.isNativePlatform()`). What remains is host-only: generating the `android/` project and
+building the APK, which need the Android SDK / JDK the loop sandbox lacks.
+
+The `android/` project is **ephemeral** (gitignored, ADR-011): regenerate it from
+`capacitor.config.ts` — never hand-edit a committed native tree.
+
+Prereqs: Android Studio + JDK 17, and a `.env`/shell with `VITE_MAPBOX_ACCESS_TOKEN` (and
+`VITE_ORS_API_KEY` for real routing — the mobile build runs in `VITE_DEMO=1` mode and calls ORS
+/ Overpass / RainViewer directly from the device).
+
+- [ ] `npm run android:add` — builds the web app (`build:mobile`, demo mode, base `/`) then
+      `npx cap add android`. Re-run `npm run android:sync` after any web change.
+- [ ] `npm run android:open` — opens the project in Android Studio; Run ▶ onto a device/emulator,
+      or Build ▸ Build APK(s). (No release keystore is committed; a debug APK is fine for the
+      single-user private install, or keep a keystore outside the repo.)
+- [ ] Tap **Export to COROS** in the app → the Android share sheet appears with the `.gpx`
+      file(s) → pick the COROS app; it receives the course. (`@capacitor/share` wires the
+      `FileProvider` + `Intent.ACTION_SEND` automatically.)
+- [ ] Optionally add the Gradle build to CI once a signing story is decided.
 
 ## Requires a real device / COROS
 - [x] **HC-5 (confirmed):** Android can share a `.gpx` to the COROS app via the system share

@@ -109,6 +109,20 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
 
 ---
 
+## Phase 7 — Android/Capacitor wrapper (native COROS share)
+
+- [x] **P7-1** Capacitor 8 integration (gate-verifiable): deps (`@capacitor/core` + `android`
+      + `share` + `filesystem` + `cli`), `frontend/capacitor.config.ts`, and the native share
+      path — `services/nativeShare.ts` writes each GPX to `Directory.Cache` and opens the share
+      sheet via `@capacitor/share`; `services/share.ts` prefers it (`isNativePlatform()`) over
+      Web Share / download, via an injectable `NativeShareAdapter` unit-tested with the plugins
+      mocked. `build:mobile` (demo mode, base `/`) + `android:add|sync|open` scripts (ADR-011).
+- [~] **P7-2** Android project + APK build — **manual QA** (`docs/MANUAL_QA.md`): the sandbox
+      has no Android SDK. `npm run android:add` → open in Android Studio → build APK → install →
+      verify **Export to COROS** opens the share sheet and the course imports on the Nomad.
+
+---
+
 ## Human-confirmation items — RESOLVED (see ADR-009 / ADR-008a)
 - [x] **HC-1..HC-4** Calibration constants accepted as sensible defaults (ADR-009); the
       values in `constants.ts` are authoritative. Optional P3 follow-up: calibrate against

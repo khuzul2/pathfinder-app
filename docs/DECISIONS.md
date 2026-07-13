@@ -105,3 +105,24 @@ loop still has no API keys and coverage is gated only on `lib/**`. **Decisions:*
    carried on the raster source. **Consequences:** the live demo shows real snapped trails,
    SAC-colored difficulty, filterable POIs, and an optional route overlay; adding the ORS
    secret upgrades synthetic routes to real ones with no code change.
+
+## ADR-011 — Capacitor 8 Android wrapper: native share plugin, ephemeral native project
+**Status:** Accepted (2026-07-13), implements ADR-008/008a. **Context:** the COROS delivery
+path is an Android share intent; the loop sandbox has no Android SDK, so the APK build is
+human-only, but the JS/TS integration is testable and belongs in the gate. **Decisions:**
+1. **Native share as an injectable seam.** `services/nativeShare.ts` writes each GPX to the
+   Capacitor `Directory.Cache` and hands the `file://` URIs to `@capacitor/share`;
+   `services/share.ts` tries this first (`Capacitor.isNativePlatform()`), then the Web Share
+   API, then a `.gpx` download. The Capacitor bridge is injected via a `NativeShareAdapter`
+   so the decision logic is unit-tested in Node with the plugins mocked — no device needed.
+   Kept in `services/` (not `lib/`) so the coverage gate stays lib-only.
+2. **Ephemeral `android/`** (already gitignored): the native project is regenerated from
+   `frontend/capacitor.config.ts` via `npm run android:add`, never committed or hand-edited.
+   Avoids a large unverifiable native tree in the repo and keeps `capacitor.config.ts` the
+   single source of truth. Trade-off: no committed release-signing config — a debug APK (or a
+   keystore kept outside the repo) suffices for the single-user private install (ADR-004).
+3. **Mobile build = demo mode.** `build:mobile` runs `VITE_DEMO=1` at base `/` so the APK is
+   self-contained (device calls ORS/Overpass/RainViewer directly), no deployed backend needed.
+   The ORS key is baked into the APK; acceptable for a private, single-user, URL/key-restricted
+   install. **Consequences:** `verify` covers the share integration; APK build + on-device COROS
+   import remain in `docs/MANUAL_QA.md` (P7-2), never faked green.

@@ -29,7 +29,10 @@
     "e2e": "playwright test",
     "verify": "node scripts/verify.mjs",
     "verify:fast": "node scripts/verify.mjs --fast",
-    "verify:full": "node scripts/verify.mjs --full"
+    "verify:full": "node scripts/verify.mjs --full",
+    "android:add": "npm run build:mobile -w frontend && npm run cap:add -w frontend",
+    "android:sync": "npm run build:mobile -w frontend && npm run cap:sync -w frontend",
+    "android:open": "npm run cap:open -w frontend"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",
