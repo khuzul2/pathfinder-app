@@ -13,6 +13,7 @@ export default tseslint.config(
       'verify-result.json',
       'playwright-report/**',
       'test-results/**',
+      '**/mockServiceWorker.js',
     ],
   },
   js.configs.recommended,

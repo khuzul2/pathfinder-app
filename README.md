@@ -5,8 +5,24 @@ live weather + Doppler radar, multi-day shelter slicing, and one-tap **GPX expor
 COROS Nomad** watch. Built by a disciplined autonomous Claude Code loop (Sonnet 5 drives;
 Opus plans, writes tests, and fixes).
 
-> **Status:** Phase 0 (harness & scaffold). The app itself is built phase-by-phase by the
-> loop — see [`TASKS.md`](./TASKS.md). Start with [`docs/SPEC.md`](./docs/SPEC.md).
+> **Status:** Phases 1–4 built (secure proxy · map + radar + theme · routing + Tobler ·
+> multi-day slicing + POIs). See [`TASKS.md`](./TASKS.md); spec in [`docs/SPEC.md`](./docs/SPEC.md).
+
+## Live demo (GitHub Pages)
+
+A **demo build** runs entirely in the browser: a Mock Service Worker serves *synthetic* data
+for `/api/*`, so the whole UX — snap-to-trail routing, Tobler elevation/time, POIs, and
+multi-day slicing — works with **no backend and no server keys**. The map is real (a public
+`pk.` Mapbox token). URL after the one-time setup below: **https://khuzul2.github.io/pathfinder-app/**
+
+**One-time repo-owner setup** (only the owner can flip these):
+1. **Settings → Pages → Source: “GitHub Actions”.**
+2. **Settings → Secrets and variables → Actions → New repository secret:**
+   `VITE_MAPBOX_ACCESS_TOKEN` = your public `pk.` token (restrict it to the Pages origin).
+
+Then every push to `main` publishes via `.github/workflows/deploy-pages.yml`. To try the demo
+locally: `BASE_PATH=/ VITE_DEMO=1 npm run build -w frontend && npm run preview -w frontend`
+(add your `pk.` token to `.env` first to see the map tiles).
 
 ## Quick start
 

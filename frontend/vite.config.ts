@@ -6,6 +6,8 @@ import { fileURLToPath, URL } from 'node:url';
 // dev, matching prod (where Express serves the built bundle). Only VITE_-prefixed
 // env vars are exposed to the client; server secrets (ORS/OpenWeather) never are.
 export default defineConfig({
+  // Served at '/' normally; GitHub Pages project sites set BASE_PATH=/pathfinder-app/.
+  base: process.env.BASE_PATH ?? '/',
   plugins: [react()],
   resolve: {
     alias: {

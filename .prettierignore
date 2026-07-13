@@ -7,3 +7,4 @@ verify-result.json
 package-lock.json
 *.md
 test/fixtures
+frontend/public/mockServiceWorker.js
