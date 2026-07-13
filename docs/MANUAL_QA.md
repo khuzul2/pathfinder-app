@@ -12,6 +12,13 @@ must never be faked green in an automated test. A human runs them at staging / r
 - [ ] Mapbox token is URL-restricted to the deployed origin; usage alerts configured.
 - [ ] OpenWeather account "Calls per day" limit lowered to 1,000 (guarantees $0).
 
+## Capacitor / Android packaging (not automatable in the loop sandbox)
+- [ ] Wrap with Capacitor: `@capacitor/core` + `@capacitor/android` + `@capacitor/share` +
+      `@capacitor/filesystem`; `npx cap add android`; build the APK (Gradle). The web export
+      (`services/share.ts`) already produces the GPX; the native adapter routes it through
+      `Intent.ACTION_SEND` so the COROS app appears in the share sheet.
+- [ ] Add the Android build to CI once the Gradle project exists.
+
 ## Requires a real device / COROS
 - [x] **HC-5 (confirmed):** Android can share a `.gpx` to the COROS app via the system share
       sheet (owner-verified 2026-07-13, ADR-008a). Export ships native share + download.

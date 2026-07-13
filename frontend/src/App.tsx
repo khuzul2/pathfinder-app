@@ -2,9 +2,8 @@ import { MapCanvas } from './components/MapCanvas';
 import { RadarToggle } from './components/RadarToggle';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Attribution } from './components/Attribution';
-import { ElevationCard } from './components/ElevationCard';
-import { ElevationChart } from './components/ElevationChart';
-import { DaySlicer } from './components/DaySlicer';
+import { RoutePanel } from './components/RoutePanel';
+import { MobileSheet } from './components/MobileSheet';
 import { useApplyTheme } from './hooks/useApplyTheme';
 import { useRoute } from './hooks/useRoute';
 import { usePois } from './hooks/usePois';
@@ -48,17 +47,13 @@ export function App() {
         <ThemeToggle />
       </div>
 
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 mx-auto flex max-w-3xl flex-col gap-2 px-4">
+      {/* Desktop: floating panel. Mobile: a Vaul bottom sheet (below). */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 mx-auto hidden max-w-3xl px-4 md:block">
         <div className="pointer-events-auto">
-          <DaySlicer />
-        </div>
-        <div className="pointer-events-auto">
-          <ElevationCard />
-        </div>
-        <div className="pointer-events-auto">
-          <ElevationChart />
+          <RoutePanel />
         </div>
       </div>
+      <MobileSheet />
 
       <Attribution />
     </div>

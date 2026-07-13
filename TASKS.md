@@ -80,13 +80,18 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
       interior-only). `DaySlicer` UI (hours/day + day list) + `useDayPlan`. `slicing.test.ts`,
       `DaySlicer.test.tsx`. Route model gained cumulative `timeSeconds`.
 
-## Phase 5 — Responsive UX & COROS export
+## Phase 5 — Responsive UX & COROS export  ✅ (gate green)
 
-- [ ] **P5-1** Vaul bottom sheet + desktop sidebar; Recharts elevation with map↔chart
-      hover-sync.
-- [ ] **P5-2** `gpx.ts` — namespaced GPX 1.1 course (per SPEC §4), XSD + round-trip tests.
-- [ ] **P5-3** Capacitor share bridge (mocked native in tests) + web `.gpx` download fallback;
-      Android build in CI. Verify: `npm run verify:full` + `docs/MANUAL_QA.md`.
+- [x] **P5-1** Responsive layout: desktop floating `RoutePanel`, mobile **Vaul** bottom sheet
+      (`MobileSheet`); Recharts elevation chart drives chart↔map hover-sync (Phase 3).
+- [x] **P5-2** `gpx.ts` — namespaced GPX 1.1 **course** (metadata→wpt*→trk*, `<ele>`, no
+      `<time>`), Douglas-Peucker simplify, locale-safe coords. Validated against the real
+      **gpx.xsd** (xmllint-wasm) + round-trip parse (fast-xml-parser). `gpxExport.ts` builds a
+      combined file + one course per day.
+- [x] **P5-3** `services/share.ts` — Web Share API for the file when the platform allows it,
+      else `.gpx` **download** fallback (tested both paths). `ExportButton` ("Export to COROS").
+      Capacitor native Android share + the Gradle/APK build remain **manual QA** (ADR-008a;
+      `docs/MANUAL_QA.md`) — not automatable in the loop sandbox.
 
 ---
 
