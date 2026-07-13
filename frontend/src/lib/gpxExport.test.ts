@@ -22,6 +22,7 @@ function makeRoute(): RouteAnalysis {
     ascentMeters: 360,
     descentMeters: 0,
     movingSeconds: 32400,
+    difficultySegments: [],
   };
 }
 

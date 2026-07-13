@@ -121,25 +121,26 @@ export function MapCanvas() {
     if (!map) return;
 
     const draw = () => {
-      const coords = route?.points.map((p) => [p.lng, p.lat]) ?? [];
-      const data = {
+      // One colored feature per constant-difficulty stretch (SAC scale).
+      const features = (route?.difficultySegments ?? []).map((seg) => ({
         type: 'Feature' as const,
-        properties: {},
-        geometry: { type: 'LineString' as const, coordinates: coords },
-      };
+        properties: { color: seg.color },
+        geometry: { type: 'LineString' as const, coordinates: seg.coordinates },
+      }));
+      const data = { type: 'FeatureCollection' as const, features };
       const existing = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
       if (existing) {
         existing.setData(data);
         return;
       }
-      if (coords.length === 0) return;
+      if (features.length === 0) return;
       map.addSource(ROUTE_SOURCE, { type: 'geojson', data });
       map.addLayer({
         id: ROUTE_LAYER,
         type: 'line',
         source: ROUTE_SOURCE,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#0F9D58', 'line-width': 4 },
+        paint: { 'line-color': ['get', 'color'], 'line-width': 5 },
       });
     };
 

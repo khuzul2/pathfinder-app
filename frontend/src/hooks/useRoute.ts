@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../state/store';
-import { requestRoute } from '../lib/routeApi';
+import { getRoute } from '../services/dataClient';
 
 /**
  * Fetches (and analyzes) the snapped route whenever there are ≥2 waypoints. TanStack Query
@@ -16,7 +16,7 @@ export function useRoute() {
 
   const query = useQuery({
     queryKey: ['route', waypoints],
-    queryFn: ({ signal }) => requestRoute(waypoints, signal),
+    queryFn: ({ signal }) => getRoute(waypoints, signal),
     enabled: waypoints.length >= 2,
     staleTime: 5 * 60_000,
     retry: false,

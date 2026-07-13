@@ -33,12 +33,22 @@ export function synthRouteResponse(
   dense.push([last[0], last[1], 800 + 220 * Math.sin(cumulative / 900)]);
 
   const n = dense.length;
+  const third = Math.floor(n / 3);
+  const twoThird = Math.floor((2 * n) / 3);
   // Alternate a couple of surfaces along the way (asphalt → dirt → gravel).
   const surface = {
     values: [
-      [0, Math.floor(n / 3), 3],
-      [Math.floor(n / 3), Math.floor((2 * n) / 3), 11],
-      [Math.floor((2 * n) / 3), n - 1, 10],
+      [0, third, 3],
+      [third, twoThird, 11],
+      [twoThird, n - 1, 10],
+    ],
+  };
+  // Rising SAC difficulty as the route climbs (T1 → T2 → T3) so it renders colored.
+  const traildifficulty = {
+    values: [
+      [0, third, 1],
+      [third, twoThird, 2],
+      [twoThird, n - 1, 3],
     ],
   };
 
@@ -50,7 +60,7 @@ export function synthRouteResponse(
         geometry: { type: 'LineString', coordinates: dense },
         properties: {
           summary: { distance: cumulative, duration: cumulative },
-          extras: { surface },
+          extras: { surface, traildifficulty },
         },
       },
     ],

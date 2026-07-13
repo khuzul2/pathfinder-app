@@ -16,6 +16,7 @@ const sampleRoute: RouteAnalysis = {
   ascentMeters: 120,
   descentMeters: 0,
   movingSeconds: 3720,
+  difficultySegments: [],
 };
 
 describe('ElevationCard', () => {

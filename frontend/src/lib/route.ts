@@ -3,6 +3,7 @@ import { segmentSeconds } from './tobler';
 import { ELEVATION_SAMPLING } from './constants';
 import { ascentDescent, type ElevPoint } from './elevation';
 import { gammaForSegment, type OrsExtraTriple } from './surfaceFactor';
+import { buildDifficultySegments, type DifficultySegment } from './difficulty';
 
 export interface RoutePoint {
   lng: number;
@@ -20,6 +21,8 @@ export interface RouteAnalysis {
   ascentMeters: number;
   descentMeters: number;
   movingSeconds: number;
+  /** Route split into constant SAC-difficulty stretches (for colored rendering + legend). */
+  difficultySegments: DifficultySegment[];
 }
 
 const MAX_SLOPE = ELEVATION_SAMPLING.maxAbsSlope;
@@ -36,12 +39,14 @@ const MAX_SLOPE = ELEVATION_SAMPLING.maxAbsSlope;
 export function analyzeRoute(
   coordinates: readonly (readonly number[])[],
   surfaceValues?: readonly OrsExtraTriple[],
+  traildifficultyValues?: readonly OrsExtraTriple[],
 ): RouteAnalysis {
   const raw: ElevPoint[] = coordinates.map((c) => ({
     lng: c[0] ?? 0,
     lat: c[1] ?? 0,
     ele: c[2] ?? 0,
   }));
+  const difficultySegments = buildDifficultySegments(coordinates, traildifficultyValues);
 
   if (raw.length < 2) {
     const only = raw[0];
@@ -51,6 +56,7 @@ export function analyzeRoute(
       ascentMeters: 0,
       descentMeters: 0,
       movingSeconds: 0,
+      difficultySegments,
     };
   }
 
@@ -75,6 +81,7 @@ export function analyzeRoute(
     ascentMeters: ascent,
     descentMeters: descent,
     movingSeconds,
+    difficultySegments,
   };
 }
 

@@ -8,28 +8,18 @@ import './index.css';
 
 const queryClient = new QueryClient();
 
-async function bootstrap() {
-  // Public demo: start the MSW worker that serves synthetic /api data (no backend needed).
-  if (import.meta.env.VITE_DEMO === '1') {
-    const { startDemoWorker } = await import('./demo/browser');
-    await startDemoWorker(import.meta.env.BASE_URL);
-  }
+// Hydrate the persisted theme choice before first paint (avoids a flash).
+useAppStore.getState().setThemePref(loadThemePref(window.localStorage));
 
-  // Hydrate the persisted theme choice before first paint (avoids a flash).
-  useAppStore.getState().setThemePref(loadThemePref(window.localStorage));
-
-  const rootEl = document.getElementById('root');
-  if (!rootEl) {
-    throw new Error('Root element #root not found');
-  }
-
-  createRoot(rootEl).render(
-    <StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <App />
-      </QueryClientProvider>
-    </StrictMode>,
-  );
+const rootEl = document.getElementById('root');
+if (!rootEl) {
+  throw new Error('Root element #root not found');
 }
 
-void bootstrap();
+createRoot(rootEl).render(
+  <StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  </StrictMode>,
+);

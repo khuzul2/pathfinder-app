@@ -7,6 +7,7 @@ import { MobileSheet } from './components/MobileSheet';
 import { useApplyTheme } from './hooks/useApplyTheme';
 import { useRoute } from './hooks/useRoute';
 import { usePois } from './hooks/usePois';
+import { useRadar } from './hooks/useRadar';
 import { useDayPlan } from './hooks/useDayPlan';
 import { useAppStore } from './state/store';
 
@@ -18,6 +19,7 @@ export function App() {
   useApplyTheme();
   useRoute(); // fetches + analyzes the route whenever waypoints change
   usePois(); // fetches POIs for the viewport (zoom-gated)
+  useRadar(); // fetches the radar frame index when the overlay is on
   useDayPlan(); // recomputes the multi-day slice plan
 
   const waypointCount = useAppStore((s) => s.waypoints.length);

@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../state/store';
-import { requestPois, type Bbox } from '../lib/poiApi';
+import { getPois } from '../services/dataClient';
+import type { Bbox } from '../lib/poiApi';
 import { OVERPASS_MIN_ZOOM } from '../lib/constants';
 
 function roundBbox(b: Bbox): Bbox {
@@ -20,7 +21,7 @@ export function usePois() {
 
   const query = useQuery({
     queryKey: ['pois', bbox ? roundBbox(bbox) : null],
-    queryFn: ({ signal }) => requestPois(bbox as Bbox, signal),
+    queryFn: ({ signal }) => getPois(bbox as Bbox, signal),
     enabled: !!bbox && zoom >= OVERPASS_MIN_ZOOM,
     staleTime: 5 * 60_000,
     retry: false,

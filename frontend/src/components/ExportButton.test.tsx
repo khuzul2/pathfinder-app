@@ -18,6 +18,7 @@ const route: RouteAnalysis = {
   ascentMeters: 140,
   descentMeters: 0,
   movingSeconds: 2000,
+  difficultySegments: [],
 };
 
 describe('ExportButton', () => {
