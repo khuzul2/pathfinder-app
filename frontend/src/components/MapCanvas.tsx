@@ -29,10 +29,13 @@ export function MapCanvas() {
   const mapboxRef = useRef<MapboxApi | null>(null);
   const readyRef = useRef(false);
   const markersRef = useRef<Marker[]>([]);
+  const poiMarkersRef = useRef<Marker[]>([]);
   const hoverMarkerRef = useRef<Marker | null>(null);
 
   const waypoints = useAppStore((s) => s.waypoints);
   const route = useAppStore((s) => s.route);
+  const pois = useAppStore((s) => s.pois);
+  const forcedStopIds = useAppStore((s) => s.forcedStopIds);
   const hoverIndex = useAppStore((s) => s.hoverIndex);
   const radarEnabled = useAppStore((s) => s.radarEnabled);
   const radarHost = useAppStore((s) => s.radarHost);
@@ -64,6 +67,16 @@ export function MapCanvas() {
         });
         map.on('click', (e) => {
           useAppStore.getState().addWaypoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+        });
+        map.on('moveend', () => {
+          const b = map.getBounds();
+          if (!b) return;
+          useAppStore
+            .getState()
+            .setViewport(
+              { south: b.getSouth(), west: b.getWest(), north: b.getNorth(), east: b.getEast() },
+              map.getZoom(),
+            );
         });
       } catch (err) {
         console.error('Map initialization failed', err);
@@ -162,6 +175,45 @@ export function MapCanvas() {
     if (map.isStyleLoaded()) applyRadar();
     else map.once('load', applyRadar);
   }, [radarEnabled, radarHost, radarFrames, activeFrameIndex]);
+
+  // --- POI markers (huts/campsites clickable to pin as a nightover stop) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    const mapboxgl = mapboxRef.current;
+    if (!map || !mapboxgl) return;
+
+    const colors: Record<string, string> = {
+      alpine_hut: '#0F9D58',
+      camp_site: '#4285F4',
+      spring: '#00A3BF',
+    };
+
+    poiMarkersRef.current.forEach((m) => m.remove());
+    poiMarkersRef.current = pois.map((poi) => {
+      const pinned = forcedStopIds.includes(poi.id);
+      const marker = new mapboxgl.Marker({
+        color: colors[poi.kind] ?? '#3C4043',
+        scale: pinned ? 1.1 : 0.7,
+      })
+        .setLngLat([poi.lng, poi.lat])
+        .addTo(map);
+      if (poi.kind !== 'spring') {
+        const el = marker.getElement();
+        el.style.cursor = 'pointer';
+        el.title = poi.name ?? 'Shelter';
+        el.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          useAppStore.getState().toggleForcedStop(poi.id);
+        });
+      }
+      return marker;
+    });
+
+    return () => {
+      poiMarkersRef.current.forEach((m) => m.remove());
+      poiMarkersRef.current = [];
+    };
+  }, [pois, forcedStopIds]);
 
   // --- hover locator dot (chart ↔ map sync) ---
   useEffect(() => {

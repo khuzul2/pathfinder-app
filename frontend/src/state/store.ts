@@ -3,6 +3,9 @@ import type { RadarFrame } from '../lib/radar';
 import type { ThemePref } from '../lib/theme';
 import type { LngLat } from '../lib/geo';
 import type { RouteAnalysis } from '../lib/route';
+import type { Poi, Bbox } from '../lib/poiApi';
+import type { SlicePlan } from '../lib/slicing';
+import { SLICING } from '../lib/constants';
 
 /**
  * Global UI state (Zustand). Shared, hover-syncable, and cheaply testable.
@@ -34,6 +37,25 @@ export interface AppState {
   /** Elevation-chart ↔ map hover-sync: index into route.points (null = no hover). */
   hoverIndex: number | null;
   setHoverIndex: (index: number | null) => void;
+
+  // POI + multi-day slicing (Phase 4)
+  pois: Poi[];
+  setPois: (pois: Poi[]) => void;
+
+  viewportBbox: Bbox | null;
+  viewportZoom: number;
+  setViewport: (bbox: Bbox, zoom: number) => void;
+
+  /** Target moving hours per day for the slicer. */
+  targetHours: number;
+  setTargetHours: (hours: number) => void;
+
+  /** Shelters the user pinned as preferred nightover stops (empty = auto-pick from all). */
+  forcedStopIds: string[];
+  toggleForcedStop: (id: string) => void;
+
+  slicePlan: SlicePlan | null;
+  setSlicePlan: (plan: SlicePlan | null) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -59,7 +81,15 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       waypoints: state.waypoints.map((w, i) => (i === index ? point : w)),
     })),
-  clearWaypoints: () => set({ waypoints: [], route: null, routeError: null, hoverIndex: null }),
+  clearWaypoints: () =>
+    set({
+      waypoints: [],
+      route: null,
+      routeError: null,
+      hoverIndex: null,
+      slicePlan: null,
+      forcedStopIds: [],
+    }),
 
   route: null,
   setRoute: (route) => set({ route }),
@@ -69,4 +99,25 @@ export const useAppStore = create<AppState>((set) => ({
 
   hoverIndex: null,
   setHoverIndex: (index) => set({ hoverIndex: index }),
+
+  pois: [],
+  setPois: (pois) => set({ pois }),
+
+  viewportBbox: null,
+  viewportZoom: 0,
+  setViewport: (viewportBbox, viewportZoom) => set({ viewportBbox, viewportZoom }),
+
+  targetHours: SLICING.targetHoursPerDay,
+  setTargetHours: (targetHours) => set({ targetHours }),
+
+  forcedStopIds: [],
+  toggleForcedStop: (id) =>
+    set((state) => ({
+      forcedStopIds: state.forcedStopIds.includes(id)
+        ? state.forcedStopIds.filter((x) => x !== id)
+        : [...state.forcedStopIds, id],
+    })),
+
+  slicePlan: null,
+  setSlicePlan: (slicePlan) => set({ slicePlan }),
 }));

@@ -4,8 +4,11 @@ import { ThemeToggle } from './components/ThemeToggle';
 import { Attribution } from './components/Attribution';
 import { ElevationCard } from './components/ElevationCard';
 import { ElevationChart } from './components/ElevationChart';
+import { DaySlicer } from './components/DaySlicer';
 import { useApplyTheme } from './hooks/useApplyTheme';
 import { useRoute } from './hooks/useRoute';
+import { usePois } from './hooks/usePois';
+import { useDayPlan } from './hooks/useDayPlan';
 import { useAppStore } from './state/store';
 
 /**
@@ -15,6 +18,8 @@ import { useAppStore } from './state/store';
 export function App() {
   useApplyTheme();
   useRoute(); // fetches + analyzes the route whenever waypoints change
+  usePois(); // fetches POIs for the viewport (zoom-gated)
+  useDayPlan(); // recomputes the multi-day slice plan
 
   const waypointCount = useAppStore((s) => s.waypoints.length);
   const clearWaypoints = useAppStore((s) => s.clearWaypoints);
@@ -44,6 +49,9 @@ export function App() {
       </div>
 
       <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 mx-auto flex max-w-3xl flex-col gap-2 px-4">
+        <div className="pointer-events-auto">
+          <DaySlicer />
+        </div>
         <div className="pointer-events-auto">
           <ElevationCard />
         </div>

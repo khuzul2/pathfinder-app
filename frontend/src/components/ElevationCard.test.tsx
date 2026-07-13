@@ -9,8 +9,8 @@ const initial = useAppStore.getState();
 
 const sampleRoute: RouteAnalysis = {
   points: [
-    { lng: 11, lat: 48, ele: 500, distanceMeters: 0 },
-    { lng: 11.01, lat: 48.01, ele: 620, distanceMeters: 2500 },
+    { lng: 11, lat: 48, ele: 500, distanceMeters: 0, timeSeconds: 0 },
+    { lng: 11.01, lat: 48.01, ele: 620, distanceMeters: 2500, timeSeconds: 3720 },
   ],
   distanceMeters: 2500,
   ascentMeters: 120,

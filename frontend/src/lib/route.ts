@@ -10,6 +10,8 @@ export interface RoutePoint {
   ele: number;
   /** Cumulative horizontal distance from the start (metres). */
   distanceMeters: number;
+  /** Cumulative Tobler moving time from the start (seconds). */
+  timeSeconds: number;
 }
 
 export interface RouteAnalysis {
@@ -44,7 +46,7 @@ export function analyzeRoute(
   if (raw.length < 2) {
     const only = raw[0];
     return {
-      points: only ? [{ ...only, distanceMeters: 0 }] : [],
+      points: only ? [{ ...only, distanceMeters: 0, timeSeconds: 0 }] : [],
       distanceMeters: 0,
       ascentMeters: 0,
       descentMeters: 0,
@@ -52,7 +54,7 @@ export function analyzeRoute(
     };
   }
 
-  const points: RoutePoint[] = [{ ...(raw[0] as ElevPoint), distanceMeters: 0 }];
+  const points: RoutePoint[] = [{ ...(raw[0] as ElevPoint), distanceMeters: 0, timeSeconds: 0 }];
   let cumulative = 0;
   let movingSeconds = 0;
 
@@ -63,7 +65,7 @@ export function analyzeRoute(
     const slope = dx > 0 ? Math.min(MAX_SLOPE, Math.max(-MAX_SLOPE, (b.ele - a.ele) / dx)) : 0;
     movingSeconds += segmentSeconds(dx, slope, gammaForSegment(i - 1, surfaceValues));
     cumulative += dx;
-    points.push({ ...b, distanceMeters: cumulative });
+    points.push({ ...b, distanceMeters: cumulative, timeSeconds: movingSeconds });
   }
 
   const { ascent, descent } = ascentDescent(raw);

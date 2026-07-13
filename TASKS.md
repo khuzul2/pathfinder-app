@@ -67,12 +67,18 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
   surface γ maps cleanly (resample/smooth helpers reserved for dense-DEM/slicing). Real map
   rendering + live routing = manual QA (needs a pk. token + backend keys).
 
-## Phase 4 — Multi-day slicing & POI
+## Phase 4 — Multi-day slicing & POI  ✅ (gate green, 118 tests)
 
-- [ ] **P4-1** Overpass POI layer (huts/campsites/springs), zoom-gated, cached.
-- [ ] **P4-2** Mark a shelter node as a nightover stop.
-- [ ] **P4-3** `slicing.ts` — time-based DP (ADR-002) with all edge cases tested.
-      Verify: `npm run verify:full`.
+- [x] **P4-1** Overpass POI layer via `/api/pois`: `poiApi.parseOverpassPois` (huts/campsites/
+      springs), `usePois` (zoom-gated TanStack Query keyed on rounded bbox, viewport-driven),
+      colored map markers. `poiApi.test.ts`, `usePois.test.tsx`.
+- [x] **P4-2** Pin a shelter as a nightover stop: hut/campsite markers toggle `forcedStopIds`;
+      when any are pinned the slicer is constrained to them.
+- [x] **P4-3** `slicing.ts` — `matchSheltersToRoute` (≤500 m cross-track) + `planDays`
+      time-based DP (ADR-002) minimizing Σ(dayTime−target)² s.t. day ≤ cap, with edge cases
+      (fits-in-one-day, no-shelter-over-cap fallback+warning, lower-cost split, buffer, dedup,
+      interior-only). `DaySlicer` UI (hours/day + day list) + `useDayPlan`. `slicing.test.ts`,
+      `DaySlicer.test.tsx`. Route model gained cumulative `timeSeconds`.
 
 ## Phase 5 — Responsive UX & COROS export
 
