@@ -38,12 +38,17 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
       (`/healthz` ok, 503 on missing key, 400 on bad input). NOTE: `docker build` itself runs
       in CI / manual QA (no daemon in the loop's sandbox) — see `docs/MANUAL_QA.md`.
 
-## Phase 2 — Map workspace & basemap
+## Phase 2 — Map workspace & basemap  ✅ (gate green incl. e2e, 64 unit/component tests)
 
-- [ ] **P2-1** Mapbox GL canvas (Outdoors), token from `VITE_` env, attribution control.
-- [ ] **P2-2** RainViewer radar overlay from `weather-maps.json` (maxzoom 7, color id 2),
-      toggle. DoD: e2e (mocked tiles) toggles the layer.
-- [ ] **P2-3** Light/dark theme toggle (persisted) + full dark token set.
+- [x] **P2-1** Mapbox GL canvas (Outdoors), token from `VITE_` env, always-on attribution.
+      `MapCanvas.tsx` lazy-imports mapbox-gl (keeps ~800KB out of the initial chunk, out of
+      jsdom); `Attribution.tsx` credits OSM/Mapbox/ORS/RainViewer (tested).
+- [x] **P2-2** RainViewer radar overlay built from `weather-maps.json` (`buildRadarTileUrl`,
+      maxzoom 7, color id 2) + `RadarToggle`. Pure URL logic unit-tested; toggle e2e-tested.
+- [x] **P2-3** Light/dark theme toggle (`ThemeToggle` + `useApplyTheme`), persisted to
+      localStorage, full dark token set in Tailwind. Unit + component + e2e (persist on reload).
+- Notes: real Mapbox rendering needs a **public `pk.` token** (manual QA); the `secret-scan`
+  gate now also fails on a leaked Mapbox `sk.` secret token.
 
 ## Phase 3 — Route snapping & elevation (Tobler)
 

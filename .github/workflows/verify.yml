@@ -21,10 +21,8 @@ jobs:
       - name: Install (lockfile-exact)
         run: npm ci
 
-      # NOTE: once Phase 2 adds e2e specs, add a step here:
-      #   npx playwright install --with-deps chromium
-      # and give playwright.config.ts a `webServer` that builds + serves the app.
-      # Until then the e2e stage auto-skips (no specs) and needs no browser.
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
 
       - name: Verify (full gate)
         run: npm run verify:full

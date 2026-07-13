@@ -7,9 +7,16 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     globals: true,
+    // Default env is node (pure lib + backend). Component tests opt into jsdom with a
+    // `// @vitest-environment jsdom` docblock at the top of the *.test.tsx file.
     environment: 'node',
-    include: ['frontend/src/**/*.test.ts', 'backend/src/**/*.test.ts', 'backend/test/**/*.test.ts'],
-    setupFiles: [],
+    include: [
+      'frontend/src/**/*.test.ts',
+      'frontend/src/**/*.test.tsx',
+      'backend/src/**/*.test.ts',
+      'backend/test/**/*.test.ts',
+    ],
+    setupFiles: ['./frontend/test/setup.ts'],
     coverage: {
       provider: 'v8',
       // Coverage teeth apply to the pure domain logic only — the code the loop must

@@ -40,13 +40,18 @@ function secretScan() {
   if (!existsSync(dist)) {
     throw new Error('frontend/dist missing — run the build stage before secret-scan.');
   }
-  // Grep the bundle for forbidden server-key identifiers. VITE_MAPBOX_ACCESS_TOKEN is the
-  // ONLY credential allowed in the client. `grep -r` exits 1 when nothing matches (good).
-  const forbidden = ['ORS_API_KEY', 'OPENWEATHER_API_KEY'];
-  for (const needle of forbidden) {
+  // Grep the bundle for forbidden secrets. VITE_MAPBOX_ACCESS_TOKEN (a PUBLIC pk. token) is
+  // the ONLY credential allowed in the client. We flag: server-key identifiers, AND a Mapbox
+  // SECRET token (sk.…) which must never be client-side. `grep` exits 1 on no match (good).
+  const forbidden = [
+    { needle: 'ORS_API_KEY', label: 'ORS server-key identifier' },
+    { needle: 'OPENWEATHER_API_KEY', label: 'OpenWeather server-key identifier' },
+    { needle: 'sk.eyJ', label: 'Mapbox SECRET token (use a public pk. token client-side)' },
+  ];
+  for (const { needle, label } of forbidden) {
     let found = '';
     try {
-      found = execSync(`grep -rl "${needle}" frontend/dist || true`, {
+      found = execSync(`grep -rlF "${needle}" frontend/dist || true`, {
         cwd: ROOT,
         encoding: 'utf-8',
       }).trim();
@@ -54,7 +59,7 @@ function secretScan() {
       found = '';
     }
     if (found) {
-      throw new Error(`Server secret identifier "${needle}" leaked into the bundle:\n${found}`);
+      throw new Error(`${label} leaked into the bundle:\n${found}`);
     }
   }
   // A real .env must never be tracked by git (only .env.example).
