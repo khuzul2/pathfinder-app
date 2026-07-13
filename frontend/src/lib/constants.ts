@@ -1,11 +1,12 @@
 /**
- * PINNED DOMAIN CONSTANTS — the load-bearing numbers the loop MUST NOT guess.
+ * PINNED DOMAIN CONSTANTS.
  *
- * The blueprint embedded these in base64 images the loop cannot read (Tobler formula,
- * γ table, slope definition, zoom threshold). The values below are transcribed from the
- * canonical literature + the review's recommended defaults, each carrying a CONFIRM note
- * where a human must verify against the source image before Phase 3 ships. See
- * docs/SPEC.md §2 for the full derivation and docs/DECISIONS.md ADR-006.
+ * The blueprint hid these numbers inside base64 images (Tobler formula, γ table, slope
+ * definition, zoom threshold). They are transcribed here as **accepted sensible defaults**,
+ * grounded in the canonical literature and typical hiking calibration — good enough to ship
+ * and calibrate later against real GPS/known routes. The owner is not verifying against the
+ * source image (ADR-009), so these ARE the spec. Change a value only deliberately, together
+ * with its test in `constants.test.ts`. See docs/SPEC.md §2.
  */
 
 /**
@@ -19,7 +20,7 @@ export const TOBLER = {
   k: 3.5,
   /** Slope offset — fastest at S = -0.05 (gentle downhill). */
   offset: 0.05,
-} as const; // SOURCE: Tobler (1993), canonical form. CONFIRM against blueprint image5/image2.
+} as const; // SOURCE: Tobler (1993), canonical form.
 
 /** Elevation-profile preprocessing applied before differentiating slope (SPEC §2.3). */
 export const ELEVATION_SAMPLING = {
@@ -34,13 +35,11 @@ export const ELEVATION_SAMPLING = {
 /**
  * ORS `extra_info.surface` INTEGER code → γ velocity multiplier ∈ (0, 1].
  *
- * γ MULTIPLIES the Tobler velocity; paved is the 1.0 baseline (Tobler's flat-ground
- * output already assumes firm walkable ground, so γ never exceeds 1). ORS returns
- * surface as [startIdx, endIdx, code] index-range triples — NOT OSM strings — and has
- * NO code for rock/scree/mud, so the safety-relevant "technical scramble" penalty must
- * be sourced from `traildifficulty` (SAC scale) below, not from surface.
- *
- * CONFIRM the four headline factors against blueprint images image8–image11.
+ * γ MULTIPLIES the Tobler velocity; paved is the 1.0 baseline (Tobler's flat-ground output
+ * already assumes firm walkable ground, so γ never exceeds 1). ORS returns surface as
+ * [startIdx, endIdx, code] index-range triples — NOT OSM strings — and has NO code for
+ * rock/scree/mud, so the "technical scramble" penalty is sourced from `traildifficulty`
+ * (SAC scale) below, not from surface. Values are accepted sensible defaults (ADR-009).
  */
 export const SURFACE_GAMMA: Readonly<Record<number, number>> = {
   0: 0.8, // Unknown
@@ -71,10 +70,10 @@ export const DEFAULT_SURFACE_GAMMA = 0.8;
  * γ override for technically hard terrain, keyed off ORS `traildifficulty` (SAC scale),
  * applied when SAC grade ≥ T3 — the scramble tier surface codes cannot express.
  */
-export const SAC_SCRAMBLE_GAMMA = 0.5; // CONFIRM against blueprint intent (image11 tier).
+export const SAC_SCRAMBLE_GAMMA = 0.5;
 
 /** Overpass POI fetches are gated to viewports at/above this zoom (SPEC §3.1). */
-export const OVERPASS_MIN_ZOOM = 11; // CONFIRM against blueprint image12.
+export const OVERPASS_MIN_ZOOM = 11;
 
 /** Multi-day slicing defaults — TIME-based per product decision (DECISIONS ADR-002). */
 export const SLICING = {

@@ -63,3 +63,23 @@ allowlist); keep a plain `.gpx` blob download as the web/desktop fallback. Add t
 (Gradle) build to CI in Phase 5. **Open item:** empirically confirm COROS registers a GPX
 share/open intent; if not, ship "save GPX, then import in COROS" UX regardless of wrapper
 (tracked in `MANUAL_QA.md`).
+
+## ADR-009 — Accept transcribed default calibration constants (no source-image confirmation)
+**Status:** Accepted (2026-07-13). **Context:** the Tobler equation, the four surface γ
+factors, γ direction, and the Overpass zoom threshold lived only in unreadable blueprint
+images; the owner is not an expert and cannot confirm them. **Decision:** treat the
+transcribed values in `frontend/src/lib/constants.ts` as the authoritative spec — canonical
+Tobler `W(S)=6·exp(-3.5·|S+0.05|)`, γ as a velocity multiplier ∈ (0,1] with paved = 1.0,
+`OVERPASS_MIN_ZOOM = 11`, `SAC_SCRAMBLE_GAMMA = 0.5`, `SLICING` 6 h target / 8 h cap.
+**Consequences:** the loop proceeds without a human gate on these numbers. They are
+sensible defaults, not measured calibration; refine later against real GPS tracks / known
+route times (a P3 follow-up), always changing the constant and its test together.
+
+## ADR-008a — COROS GPX delivery confirmed (native share works; keep download too)
+**Status:** Accepted (2026-07-13), supersedes the open item in ADR-008. **Context:** the
+owner confirmed on-device that Android can share a `.gpx` to the COROS app via the system
+share sheet. **Decision:** ship BOTH paths — (1) Capacitor native share
+(`@capacitor/share` + `@capacitor/filesystem`) targeting the COROS app on Android, and
+(2) a plain `.gpx` file download on every platform (web/desktop + as an always-available
+fallback on mobile). The export UI offers both. **Consequences:** HC-5 is resolved; the
+Web Share MIME limitation is moot because the native intent path is used on Android.

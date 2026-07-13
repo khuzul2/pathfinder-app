@@ -69,9 +69,9 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
 
 ---
 
-## Human-confirmation-required (do NOT let the loop guess — see `constants.ts`)
-- [ ] **HC-1** Confirm the Tobler equation constants against blueprint **image5/image2**.
-- [ ] **HC-2** Confirm the four surface γ factors against **image8–image11**.
-- [ ] **HC-3** Confirm γ is applied as a velocity **multiplier** (direction) per **image7**.
-- [ ] **HC-4** Confirm the Overpass POI zoom threshold against **image12**.
-- [ ] **HC-5** Confirm COROS accepts a GPX course share/open intent (see `MANUAL_QA.md`).
+## Human-confirmation items — RESOLVED (see ADR-009 / ADR-008a)
+- [x] **HC-1..HC-4** Calibration constants accepted as sensible defaults (ADR-009); the
+      values in `constants.ts` are authoritative. Optional P3 follow-up: calibrate against
+      real GPS tracks / known route times, changing constant + test together.
+- [x] **HC-5** COROS GPX delivery confirmed: Android native share works; export ships both
+      the native share (Capacitor) and a plain `.gpx` download everywhere (ADR-008a).

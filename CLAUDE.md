@@ -70,9 +70,9 @@ red, the task is not done. There is no third state.
    reintroduce a Mapbox Terrain-RGB elevation path (ADR-003). A raster-DEM is allowed only
    for optional 3D hillshade, never blended into the profile numbers.
 4. **Pinned constants are law.** Tobler params, the γ surface table, sampling params, and
-   zoom thresholds live in `frontend/src/lib/constants.ts` with CONFIRM notes. Do not guess
-   or silently change them; if a human confirms a source-image value, change the constant
-   **and** its test together.
+   zoom thresholds live in `frontend/src/lib/constants.ts` as accepted sensible defaults
+   (ADR-009). Do not silently change them mid-task; change a value only deliberately and
+   only together with its test in `constants.test.ts`.
 5. **GPX is real GPX 1.1** — fully namespaced root, correct child ordering, `<ele>` before
    `<time>` (omit `<time>` for a planned course). Validate against the XSD in tests, not by
    substring match.

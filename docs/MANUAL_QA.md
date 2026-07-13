@@ -13,11 +13,12 @@ must never be faked green in an automated test. A human runs them at staging / r
 - [ ] OpenWeather account "Calls per day" limit lowered to 1,000 (guarantees $0).
 
 ## Requires a real device / COROS
-- [ ] **HC-5:** Export a GPX and confirm the COROS Nomad imports it as a navigable course
-      (via share intent OR in-app file import). If there is no GPX share/open intent, the
-      UX is "save GPX, then import in COROS" — update ADR-008 accordingly.
+- [x] **HC-5 (confirmed):** Android can share a `.gpx` to the COROS app via the system share
+      sheet (owner-verified 2026-07-13, ADR-008a). Export ships native share + download.
+- [ ] Re-verify after implementing export: the shared GPX imports as a navigable **course**
+      on the COROS Nomad (not a recorded activity), i.e. `<time>` omitted, `<ele>` present.
 - [ ] Multi-day export: each day's course + shelter waypoints load correctly on-device.
-- [ ] Android: Capacitor native share sheet targets the COROS app with the `.gpx` file.
+- [ ] The plain `.gpx` download fallback works on desktop and mobile browsers.
 
 ## Human-eye / UX
 - [ ] Light and dark themes both legible; WCAG AA contrast holds for text.

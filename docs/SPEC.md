@@ -3,8 +3,8 @@
 > This is the loop-executable spec. It supersedes the original blueprint wherever they
 > disagree, folding in the review findings and the eight product decisions
 > (`DECISIONS.md`). Every value the original blueprint hid inside an image is transcribed
-> here in text. Numbers marked **CONFIRM** are transcribed defaults a human must verify
-> against the source image before the relevant phase ships.
+> here in text. Those numbers are **accepted sensible defaults** (ADR-009) — authoritative
+> for the build, and calibratable later against real GPS tracks / known route times.
 
 ## 0. Product shape & scope
 
@@ -75,7 +75,7 @@ elevation. (If 3D hillshade is ever wanted, use tileset `mapbox-terrain-dem-v1`,
 
 ### 2.3 Tobler's Hiking Function (transcribed)
 ```
-W(S) = 6 · exp(-3.5 · |S + 0.05|)      [km/h]      (CONFIRM against image5)
+W(S) = 6 · exp(-3.5 · |S + 0.05|)      [km/h]      (canonical Tobler; ADR-009)
 S    = ΔH / ΔX_horizontal              (tangent; ΔX via haversine, never 3D length)
 v_i  = min(6, γ_i · W(S_i))            (γ is a velocity multiplier in (0,1])
 t_i  = d_i / v_i ;  T = Σ t_i ;  keep cumulative T(s) for the slicer
@@ -89,14 +89,14 @@ differentiating; clamp `|S| ≤ 0.6` (~31°) so `exp()` can't collapse on DEM no
 surface **integer code**, with the technical-scramble penalty sourced from
 `traildifficulty` (SAC ≥ T3 → γ ≈ 0.5), because surface has **no** rock/scree/mud code.
 The full code→γ map lives in `frontend/src/lib/constants.ts` (`SURFACE_GAMMA`). The four
-headline factors (asphalt / gravel / dirt / technical) are **CONFIRM** vs images 8–11.
+headline factors (asphalt / gravel / dirt / technical) are accepted defaults (ADR-009).
 
 ## 3. External integrations
 
 ### 3.1 Overpass (POI) — proxied
 Query `tourism=alpine_hut`, `tourism=camp_site`, `natural=spring` in a bbox
 (order **south,west,north,east** — correct as written). Fetch only at/above
-`OVERPASS_MIN_ZOOM` (**CONFIRM** image12; default 11); debounce viewport queries; cache
+`OVERPASS_MIN_ZOOM` (default 11; ADR-009); debounce viewport queries; cache
 per-bbox; route through the gateway with a stable User-Agent + short server cache.
 
 ### 3.2 OpenWeather One Call 3.0 — proxied
