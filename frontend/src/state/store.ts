@@ -3,7 +3,7 @@ import type { RadarFrame } from '../lib/radar';
 import type { ThemePref } from '../lib/theme';
 import type { LngLat } from '../lib/geo';
 import type { RouteAnalysis } from '../lib/route';
-import type { Poi, Bbox } from '../lib/poiApi';
+import type { Poi, Bbox, PoiKind } from '../lib/poiApi';
 import type { SlicePlan } from '../lib/slicing';
 import { SLICING } from '../lib/constants';
 
@@ -26,6 +26,7 @@ export interface AppState {
   waypoints: LngLat[];
   addWaypoint: (point: LngLat) => void;
   updateWaypoint: (index: number, point: LngLat) => void;
+  removeWaypoint: (index: number) => void;
   clearWaypoints: () => void;
 
   route: RouteAnalysis | null;
@@ -38,9 +39,15 @@ export interface AppState {
   hoverIndex: number | null;
   setHoverIndex: (index: number | null) => void;
 
+  // Map layers (Phase 6)
+  trailsOverlay: boolean;
+  toggleTrailsOverlay: () => void;
+
   // POI + multi-day slicing (Phase 4)
   pois: Poi[];
   setPois: (pois: Poi[]) => void;
+  poiFilters: Record<PoiKind, boolean>;
+  togglePoiFilter: (kind: PoiKind) => void;
 
   viewportBbox: Bbox | null;
   viewportZoom: number;
@@ -81,6 +88,8 @@ export const useAppStore = create<AppState>((set) => ({
     set((state) => ({
       waypoints: state.waypoints.map((w, i) => (i === index ? point : w)),
     })),
+  removeWaypoint: (index) =>
+    set((state) => ({ waypoints: state.waypoints.filter((_, i) => i !== index) })),
   clearWaypoints: () =>
     set({
       waypoints: [],
@@ -100,8 +109,14 @@ export const useAppStore = create<AppState>((set) => ({
   hoverIndex: null,
   setHoverIndex: (index) => set({ hoverIndex: index }),
 
+  trailsOverlay: false,
+  toggleTrailsOverlay: () => set((state) => ({ trailsOverlay: !state.trailsOverlay })),
+
   pois: [],
   setPois: (pois) => set({ pois }),
+  poiFilters: { alpine_hut: true, camp_site: true, spring: true },
+  togglePoiFilter: (kind) =>
+    set((state) => ({ poiFilters: { ...state.poiFilters, [kind]: !state.poiFilters[kind] } })),
 
   viewportBbox: null,
   viewportZoom: 0,

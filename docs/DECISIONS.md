@@ -83,3 +83,25 @@ share sheet. **Decision:** ship BOTH paths — (1) Capacitor native share
 (2) a plain `.gpx` file download on every platform (web/desktop + as an always-available
 fallback on mobile). The export UI offers both. **Consequences:** HC-5 is resolved; the
 Web Share MIME limitation is moot because the native intent path is used on Android.
+
+## ADR-010 — Trail-difficulty coloring + hiking overlay; demo talks to upstreams directly
+**Status:** Accepted (2026-07-13). **Context:** Phase 6 needed the web demo to show *real*
+trails/POIs (not just synthetic shapes) and to convey mountain-trail difficulty, while the
+loop still has no API keys and coverage is gated only on `lib/**`. **Decisions:**
+1. **Difficulty as data, not chrome.** ORS `extra_info: ['surface','traildifficulty',
+   'steepness']` is requested on every route; `lib/difficulty.ts` maps the SAC hiking scale
+   (T1–T6) to a fixed color ramp and splits the geometry into constant-grade
+   `difficultySegments`. The map paints one line feature per segment via a data-driven
+   `['get','color']`; the sidebar shows only the grades actually present. This keeps the
+   mapping pure + unit-tested and out of the imperative map layer.
+2. **A data-source seam** isolates env-branching from `lib/**` (coverage safety): the public
+   demo (`VITE_DEMO=1`) calls ORS directly (`VITE_ORS_API_KEY`, or a synthetic fallback when
+   unset), plus keyless Overpass + RainViewer, all in `demo/directApi.ts`; production routes
+   through the backend proxy. `services/dataClient.ts` picks the path. No secret ever reaches
+   `lib/**`, and the fallback means the demo renders even with no key configured.
+3. **Waymarked Trails** (`tile.waymarkedtrails.org/hiking`) is the toggleable hiking-route
+   raster overlay — a rendered OSM route layer, NOT an elevation/profile source, so ADR-003
+   (ORS is the single source of truth for elevation numbers) is preserved. Its attribution is
+   carried on the raster source. **Consequences:** the live demo shows real snapped trails,
+   SAC-colored difficulty, filterable POIs, and an optional route overlay; adding the ORS
+   secret upgrades synthetic routes to real ones with no code change.

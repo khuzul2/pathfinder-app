@@ -1,19 +1,17 @@
 import { MapCanvas } from './components/MapCanvas';
-import { RadarToggle } from './components/RadarToggle';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Attribution } from './components/Attribution';
-import { RoutePanel } from './components/RoutePanel';
+import { Sidebar } from './components/Sidebar';
 import { MobileSheet } from './components/MobileSheet';
 import { useApplyTheme } from './hooks/useApplyTheme';
 import { useRoute } from './hooks/useRoute';
 import { usePois } from './hooks/usePois';
 import { useRadar } from './hooks/useRadar';
 import { useDayPlan } from './hooks/useDayPlan';
-import { useAppStore } from './state/store';
 
 /**
- * App shell: fullscreen map with floating controls + a bottom route panel. The mobile
- * bottom sheet and sidebar refinements arrive in Phase 5.
+ * App shell: a desktop sidebar (route planner) beside a fullscreen map; on mobile the map is
+ * fullscreen with the planner in a Vaul bottom sheet.
  */
 export function App() {
   useApplyTheme();
@@ -22,42 +20,22 @@ export function App() {
   useRadar(); // fetches the radar frame index when the overlay is on
   useDayPlan(); // recomputes the multi-day slice plan
 
-  const waypointCount = useAppStore((s) => s.waypoints.length);
-  const clearWaypoints = useAppStore((s) => s.clearWaypoints);
-
   return (
-    <div className="relative h-full w-full bg-canvas-light dark:bg-canvas-dark">
-      <MapCanvas />
+    <div className="flex h-full w-full bg-canvas-light dark:bg-canvas-dark">
+      <aside className="hidden w-[380px] shrink-0 border-r border-neutral-200 bg-white md:flex dark:border-neutral-700 dark:bg-neutral-800">
+        <Sidebar />
+      </aside>
 
-      <header className="pointer-events-none absolute left-4 top-4 z-10 flex items-center gap-2 rounded-lg bg-white/90 px-3 py-2 shadow-fab dark:bg-neutral-800/90">
-        <h1 className="font-heading text-lg font-medium text-slate-accent dark:text-neutral-100">
-          Pathfinder
-        </h1>
-      </header>
+      <div className="relative flex-1">
+        <MapCanvas />
 
-      <div className="absolute right-4 top-4 z-10 flex gap-2">
-        {waypointCount > 0 && (
-          <button
-            type="button"
-            onClick={clearWaypoints}
-            className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-slate-accent shadow-fab dark:bg-neutral-800 dark:text-neutral-100"
-          >
-            Clear
-          </button>
-        )}
-        <RadarToggle />
-        <ThemeToggle />
-      </div>
-
-      {/* Desktop: floating panel. Mobile: a Vaul bottom sheet (below). */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 mx-auto hidden max-w-3xl px-4 md:block">
-        <div className="pointer-events-auto">
-          <RoutePanel />
+        <div className="absolute right-4 top-4 z-10 flex gap-2">
+          <ThemeToggle />
         </div>
-      </div>
-      <MobileSheet />
 
-      <Attribution />
+        <Attribution />
+        <MobileSheet />
+      </div>
     </div>
   );
 }

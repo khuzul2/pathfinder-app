@@ -1,31 +1,23 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MobileSheet } from './MobileSheet';
 import { useAppStore } from '../state/store';
-import type { RouteAnalysis } from '../lib/route';
 
 const initial = useAppStore.getState();
-
-const route = {
-  points: [{}, {}],
-  distanceMeters: 0,
-  ascentMeters: 0,
-  descentMeters: 0,
-  movingSeconds: 0,
-} as unknown as RouteAnalysis;
 
 describe('MobileSheet', () => {
   beforeEach(() => useAppStore.setState(initial, true));
 
-  it('renders nothing without a route', () => {
-    const { container } = render(<MobileSheet />);
-    expect(container).toBeEmptyDOMElement();
+  it('always offers the swipe-up planner trigger', () => {
+    render(<MobileSheet />);
+    expect(screen.getByRole('button', { name: /plan route/i })).toBeInTheDocument();
   });
 
-  it('shows a swipe-up trigger once a route exists', () => {
-    useAppStore.setState({ route });
+  it('reveals the planning workspace when opened', async () => {
     render(<MobileSheet />);
-    expect(screen.getByRole('button', { name: /route details/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /plan route/i }));
+    expect(await screen.findByText(/click the map to drop points/i)).toBeInTheDocument();
   });
 });

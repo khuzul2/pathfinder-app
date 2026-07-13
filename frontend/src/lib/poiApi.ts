@@ -3,6 +3,15 @@ import type { Shelter } from './slicing';
 
 export type PoiKind = 'alpine_hut' | 'camp_site' | 'spring';
 
+/** Display metadata per POI category (marker icon/color, legend + filter labels). */
+export const POI_META: Readonly<Record<PoiKind, { label: string; icon: string; color: string }>> = {
+  alpine_hut: { label: 'Mountain hut', icon: '🏠', color: '#0F9D58' },
+  camp_site: { label: 'Campsite', icon: '⛺', color: '#4285F4' },
+  spring: { label: 'Water source', icon: '💧', color: '#00A3BF' },
+};
+
+export const POI_KINDS: readonly PoiKind[] = ['alpine_hut', 'camp_site', 'spring'];
+
 export interface Poi {
   id: string;
   lng: number;

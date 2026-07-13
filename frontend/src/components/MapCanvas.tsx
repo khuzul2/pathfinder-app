@@ -1,27 +1,87 @@
 import { useEffect, useRef } from 'react';
-import type { Map as MapboxMap, Marker, MapOptions, MarkerOptions, GeoJSONSource } from 'mapbox-gl';
+import type {
+  Map as MapboxMap,
+  Marker,
+  Popup,
+  MapOptions,
+  MarkerOptions,
+  PopupOptions,
+  GeoJSONSource,
+} from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAppStore } from '../state/store';
 import { MAP_STYLE, DEFAULT_CENTER, DEFAULT_ZOOM } from '../lib/mapConfig';
 import { buildRadarTileUrl, RADAR_MAX_ZOOM } from '../lib/radar';
+import { POI_META } from '../lib/poiApi';
+import type { Poi } from '../lib/poiApi';
 
 /** The subset of the lazy-loaded mapbox-gl default export we use. */
 interface MapboxApi {
   accessToken: string | null | undefined;
   Map: new (options: MapOptions) => MapboxMap;
   Marker: new (options?: MarkerOptions) => Marker;
+  Popup: new (options?: PopupOptions) => Popup;
 }
 
 const RADAR_SOURCE = 'rainviewer-radar';
 const RADAR_LAYER = 'rainviewer-radar-layer';
 const ROUTE_SOURCE = 'route';
 const ROUTE_LAYER = 'route-line';
+const TRAILS_SOURCE = 'waymarked-hiking';
+const TRAILS_LAYER = 'waymarked-hiking-layer';
+
+/** Waymarked Trails renders OSM hiking relations (SAC-coloured routes) as a raster overlay. */
+const TRAILS_TILES = 'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png';
+
+/** A round emoji pin element for a POI; pinned shelters read larger with a coral ring. */
+function buildPoiElement(poi: Poi, pinned: boolean): HTMLDivElement {
+  const meta = POI_META[poi.kind];
+  const size = pinned ? 30 : 24;
+  const el = document.createElement('div');
+  el.style.cssText = `display:flex;align-items:center;justify-content:center;width:${size}px;height:${size}px;border-radius:9999px;background:${meta.color};border:2px solid ${
+    pinned ? '#EA4335' : 'rgba(255,255,255,0.85)'
+  };box-shadow:0 1px 4px rgba(0,0,0,0.35);font-size:${pinned ? 15 : 12}px;cursor:pointer;`;
+  el.textContent = meta.icon;
+  el.title = poi.name ?? meta.label;
+  return el;
+}
+
+/** Popup DOM: name + category, plus a pin/unpin overnight-stop action for shelters. */
+function buildPoiPopup(poi: Poi, pinned: boolean): HTMLDivElement {
+  const meta = POI_META[poi.kind];
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'font:13px system-ui,sans-serif;min-width:150px;color:#202124;';
+
+  const title = document.createElement('div');
+  title.style.cssText = 'font-weight:600;';
+  title.textContent = `${meta.icon} ${poi.name ?? meta.label}`;
+
+  const sub = document.createElement('div');
+  sub.style.cssText = 'opacity:0.6;margin-top:2px;';
+  sub.textContent = meta.label;
+  wrap.append(title, sub);
+
+  if (poi.kind !== 'spring') {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = pinned ? 'Unpin overnight stop' : 'Pin as overnight stop';
+    btn.style.cssText = `margin-top:8px;width:100%;border-radius:6px;border:1px solid ${meta.color};background:${
+      pinned ? meta.color : '#fff'
+    };color:${pinned ? '#fff' : meta.color};padding:4px 8px;font:600 12px system-ui,sans-serif;cursor:pointer;`;
+    btn.addEventListener('click', () => {
+      useAppStore.getState().toggleForcedStop(poi.id);
+    });
+    wrap.append(btn);
+  }
+  return wrap;
+}
 
 /**
  * The Mapbox GL canvas + all imperative map wiring (waypoint markers, the snapped route
- * line, radar overlay, hover locator). mapbox-gl is lazy-imported so it stays out of the
- * initial bundle and out of jsdom tests (no token → the map never initializes). This
- * imperative layer is verified by manual QA; the pure logic it calls (`lib/*`) is unit-tested.
+ * line, trail overlay, POI pins, radar overlay, hover locator). mapbox-gl is lazy-imported so
+ * it stays out of the initial bundle and out of jsdom tests (no token → the map never
+ * initializes). This imperative layer is verified by manual QA; the pure logic it calls
+ * (`lib/*`) is unit-tested.
  */
 export function MapCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -30,13 +90,16 @@ export function MapCanvas() {
   const readyRef = useRef(false);
   const markersRef = useRef<Marker[]>([]);
   const poiMarkersRef = useRef<Marker[]>([]);
+  const poiPopupRef = useRef<Popup | null>(null);
   const hoverMarkerRef = useRef<Marker | null>(null);
 
   const waypoints = useAppStore((s) => s.waypoints);
   const route = useAppStore((s) => s.route);
   const pois = useAppStore((s) => s.pois);
+  const poiFilters = useAppStore((s) => s.poiFilters);
   const forcedStopIds = useAppStore((s) => s.forcedStopIds);
   const hoverIndex = useAppStore((s) => s.hoverIndex);
+  const trailsOverlay = useAppStore((s) => s.trailsOverlay);
   const radarEnabled = useAppStore((s) => s.radarEnabled);
   const radarHost = useAppStore((s) => s.radarHost);
   const radarFrames = useAppStore((s) => s.radarFrames);
@@ -115,6 +178,44 @@ export function MapCanvas() {
     };
   }, [waypoints]);
 
+  // --- Waymarked Trails hiking overlay (toggleable) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const apply = () => {
+      const hasLayer = map.getLayer(TRAILS_LAYER);
+      if (!trailsOverlay) {
+        if (hasLayer) map.removeLayer(TRAILS_LAYER);
+        if (map.getSource(TRAILS_SOURCE)) map.removeSource(TRAILS_SOURCE);
+        return;
+      }
+      if (hasLayer) return;
+      if (!map.getSource(TRAILS_SOURCE)) {
+        map.addSource(TRAILS_SOURCE, {
+          type: 'raster',
+          tiles: [TRAILS_TILES],
+          tileSize: 256,
+          attribution: 'Trails © waymarkedtrails.org',
+        });
+      }
+      // Keep the snapped route drawn on top of the overlay when both are present.
+      const beforeId = map.getLayer(ROUTE_LAYER) ? ROUTE_LAYER : undefined;
+      map.addLayer(
+        {
+          id: TRAILS_LAYER,
+          type: 'raster',
+          source: TRAILS_SOURCE,
+          paint: { 'raster-opacity': 0.85 },
+        },
+        beforeId,
+      );
+    };
+
+    if (map.isStyleLoaded()) apply();
+    else map.once('load', apply);
+  }, [trailsOverlay]);
+
   // --- snapped route line ---
   useEffect(() => {
     const map = mapRef.current;
@@ -177,44 +278,36 @@ export function MapCanvas() {
     else map.once('load', applyRadar);
   }, [radarEnabled, radarHost, radarFrames, activeFrameIndex]);
 
-  // --- POI markers (huts/campsites clickable to pin as a nightover stop) ---
+  // --- POI markers (emoji pins; filtered by category; click for details/pin-as-stop) ---
   useEffect(() => {
     const map = mapRef.current;
     const mapboxgl = mapboxRef.current;
     if (!map || !mapboxgl) return;
 
-    const colors: Record<string, string> = {
-      alpine_hut: '#0F9D58',
-      camp_site: '#4285F4',
-      spring: '#00A3BF',
-    };
-
+    const visible = pois.filter((poi) => poiFilters[poi.kind]);
     poiMarkersRef.current.forEach((m) => m.remove());
-    poiMarkersRef.current = pois.map((poi) => {
+    poiMarkersRef.current = visible.map((poi) => {
       const pinned = forcedStopIds.includes(poi.id);
-      const marker = new mapboxgl.Marker({
-        color: colors[poi.kind] ?? '#3C4043',
-        scale: pinned ? 1.1 : 0.7,
-      })
-        .setLngLat([poi.lng, poi.lat])
-        .addTo(map);
-      if (poi.kind !== 'spring') {
-        const el = marker.getElement();
-        el.style.cursor = 'pointer';
-        el.title = poi.name ?? 'Shelter';
-        el.addEventListener('click', (ev) => {
-          ev.stopPropagation();
-          useAppStore.getState().toggleForcedStop(poi.id);
-        });
-      }
+      const el = buildPoiElement(poi, pinned);
+      const marker = new mapboxgl.Marker({ element: el }).setLngLat([poi.lng, poi.lat]).addTo(map);
+      el.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        poiPopupRef.current?.remove();
+        poiPopupRef.current = new mapboxgl.Popup({ offset: 18, closeButton: true })
+          .setLngLat([poi.lng, poi.lat])
+          .setDOMContent(buildPoiPopup(poi, pinned))
+          .addTo(map);
+      });
       return marker;
     });
 
     return () => {
+      poiPopupRef.current?.remove();
+      poiPopupRef.current = null;
       poiMarkersRef.current.forEach((m) => m.remove());
       poiMarkersRef.current = [];
     };
-  }, [pois, forcedStopIds]);
+  }, [pois, poiFilters, forcedStopIds]);
 
   // --- hover locator dot (chart ↔ map sync) ---
   useEffect(() => {

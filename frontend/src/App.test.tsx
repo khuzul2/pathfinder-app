@@ -16,25 +16,25 @@ function renderApp() {
   );
 }
 
-// Smoke test of the whole shell. MapCanvas skips real Mapbox init here (no token, no WebGL),
-// so the shell renders cleanly in jsdom.
+// Smoke test of the shell. MapCanvas skips real Mapbox init here (no token, no WebGL); the
+// Vaul mobile sheet only mounts its trigger, so the sidebar content renders once.
 describe('App shell', () => {
   beforeEach(() => useAppStore.setState(initial, true));
 
-  it('renders the heading, controls, map container, and attribution', () => {
+  it('renders the sidebar, map, layer controls, attribution, and builder instruction', () => {
     renderApp();
     expect(screen.getByRole('heading', { name: /pathfinder/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /radar/i })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument();
     expect(screen.getByTestId('map-canvas')).toBeInTheDocument();
     expect(screen.getByText(/OpenStreetMap/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /rain radar/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument();
+    expect(screen.getByText(/click the map to drop points/i)).toBeInTheDocument();
   });
 
-  it('shows a Clear button only after waypoints exist', () => {
-    renderApp();
-    expect(screen.queryByRole('button', { name: /clear/i })).not.toBeInTheDocument();
+  it('reveals the waypoint list once points exist', () => {
     useAppStore.setState({ waypoints: [{ lng: 11, lat: 48 }] });
     renderApp();
-    expect(screen.getAllByRole('button', { name: /clear/i }).length).toBeGreaterThan(0);
+    expect(screen.getByText(/waypoints \(1\)/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
   });
 });

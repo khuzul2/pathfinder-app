@@ -95,6 +95,20 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
 
 ---
 
+## Phase 6 — Trail/POI visualization & route-builder UX  ✅ (gate green, 150 tests)
+
+- [x] **P6-1** Live trail data on the public demo (`demo/directApi.ts` → ORS with
+      `VITE_ORS_API_KEY`, keyless Overpass + RainViewer; synthetic fallback when unset).
+      `difficulty.ts` maps ORS `traildifficulty` (SAC T1–T6) to colored `difficultySegments`;
+      the map draws one line feature per constant-difficulty stretch (`ADR-010`).
+- [x] **P6-2** Route-builder workspace (`Sidebar` shared by desktop aside + `MobileSheet`):
+      `WaypointList` (numbered points, remove/clear, empty-state instruction), `LayerControls`
+      (trails overlay, radar, per-category POI filters), `DifficultyLegend` (grades present).
+      Map: **Waymarked Trails** hiking raster overlay (toggle), emoji POI pins filtered by
+      category, click popups (name/category + pin-as-overnight-stop for shelters).
+
+---
+
 ## Human-confirmation items — RESOLVED (see ADR-009 / ADR-008a)
 - [x] **HC-1..HC-4** Calibration constants accepted as sensible defaults (ADR-009); the
       values in `constants.ts` are authoritative. Optional P3 follow-up: calibrate against
