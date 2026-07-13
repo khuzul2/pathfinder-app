@@ -1,0 +1,51 @@
+{
+  "name": "pathfinder-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Topographic hiking route planner with COROS GPX export, built by a disciplined autonomous Claude Code loop.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22 <23",
+    "npm": ">=10"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "scripts": {
+    "bootstrap": "npm ci",
+    "dev": "concurrently -k -n backend,frontend -c blue,green \"npm:dev -w backend\" \"npm:dev -w frontend\"",
+    "build": "npm run build -w frontend && npm run build -w backend",
+    "start": "node backend/dist/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "typecheck": "npm run typecheck -w frontend && npm run typecheck -w backend",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "e2e": "playwright test",
+    "verify": "node scripts/verify.mjs",
+    "verify:fast": "node scripts/verify.mjs --fast",
+    "verify:full": "node scripts/verify.mjs --full"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.49.1",
+    "@types/node": "^22.10.5",
+    "@types/supertest": "^6.0.2",
+    "@vitest/coverage-v8": "^4.1.0",
+    "concurrently": "^9.1.2",
+    "eslint": "^9.17.0",
+    "globals": "^15.14.0",
+    "msw": "^2.7.0",
+    "prettier": "^3.4.2",
+    "supertest": "^7.0.0",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.19.1",
+    "vite": "^6.0.7",
+    "vitest": "^4.1.0"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "type": "FeatureCollection",
+  "bbox": [11.5761, 48.1374, 11.582, 48.1402],
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [11.5761, 48.1374, 520.1],
+          [11.5779, 48.1382, 528.4],
+          [11.5798, 48.1391, 541.9],
+          [11.5812, 48.1398, 549.2],
+          [11.582, 48.1402, 553.0]
+        ]
+      },
+      "properties": {
+        "summary": { "distance": 612.4, "duration": 470.2 },
+        "extras": {
+          "surface": { "values": [[0, 2, 3], [2, 4, 11]] },
+          "traildifficulty": { "values": [[0, 4, 1]] },
+          "steepness": { "values": [[0, 2, 1], [2, 4, 3]] }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "attribution": "openrouteservice.org | OpenStreetMap contributors",
+    "service": "routing",
+    "query": { "profile": "foot-hiking", "format": "geojson" }
+  }
+}

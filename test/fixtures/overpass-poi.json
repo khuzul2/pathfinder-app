@@ -1,0 +1,27 @@
+{
+  "version": 0.6,
+  "generator": "Overpass API",
+  "elements": [
+    {
+      "type": "node",
+      "id": 100001,
+      "lat": 47.2534,
+      "lon": 11.3891,
+      "tags": { "tourism": "alpine_hut", "name": "Pfeishütte", "ele": "1922" }
+    },
+    {
+      "type": "node",
+      "id": 100002,
+      "lat": 47.2711,
+      "lon": 11.4123,
+      "tags": { "tourism": "camp_site", "name": "Almwiese Campsite" }
+    },
+    {
+      "type": "node",
+      "id": 100003,
+      "lat": 47.2622,
+      "lon": 11.4005,
+      "tags": { "natural": "spring", "drinking_water": "yes" }
+    }
+  ]
+}

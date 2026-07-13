@@ -1,0 +1,20 @@
+# Local DEV topology (Vite HMR + Express with reload). The multi-stage Dockerfile is for
+# PROD; this file is for `docker compose up` during development.
+services:
+  app:
+    image: node:22-alpine
+    working_dir: /app
+    command: sh -c "npm ci && npm run dev"
+    env_file:
+      - .env
+    environment:
+      # Vite must bind 0.0.0.0 inside the container to be reachable from the host.
+      - HOST=0.0.0.0
+    ports:
+      - '5173:5173' # Vite dev server
+      - '8080:8080' # Express gateway
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /app/frontend/node_modules
+      - /app/backend/node_modules

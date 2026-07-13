@@ -1,0 +1,42 @@
+{
+  "lat": 48.1374,
+  "lon": 11.5761,
+  "timezone": "Europe/Berlin",
+  "timezone_offset": 7200,
+  "current": {
+    "dt": 1751362800,
+    "temp": 14.2,
+    "feels_like": 13.6,
+    "humidity": 72,
+    "wind_speed": 3.6,
+    "wind_deg": 210,
+    "weather": [{ "id": 500, "main": "Rain", "description": "light rain" }]
+  },
+  "minutely": [
+    { "dt": 1751362860, "precipitation": 0.12 },
+    { "dt": 1751362920, "precipitation": 0.34 },
+    { "dt": 1751362980, "precipitation": 0.51 }
+  ],
+  "hourly": [
+    { "dt": 1751362800, "temp": 14.2, "wind_speed": 3.6, "pop": 0.4 },
+    { "dt": 1751366400, "temp": 13.9, "wind_speed": 4.1, "pop": 0.6 }
+  ],
+  "daily": [
+    {
+      "dt": 1751367600,
+      "temp": { "min": 9.8, "max": 17.3 },
+      "wind_speed": 5.2,
+      "pop": 0.7,
+      "weather": [{ "id": 501, "main": "Rain", "description": "moderate rain" }]
+    }
+  ],
+  "alerts": [
+    {
+      "sender_name": "DWD",
+      "event": "Thunderstorm Warning",
+      "start": 1751371200,
+      "end": 1751382000,
+      "description": "Severe thunderstorms with heavy rain and gusts expected in alpine areas."
+    }
+  ]
+}

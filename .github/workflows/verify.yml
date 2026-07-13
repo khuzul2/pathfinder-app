@@ -1,0 +1,41 @@
+name: verify
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+# "Done" means CI-green, not just green on the loop's machine. This runs the full gate on a
+# pinned Node so phase completion is falsifiable off the driver's box.
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - name: Install (lockfile-exact)
+        run: npm ci
+
+      # NOTE: once Phase 2 adds e2e specs, add a step here:
+      #   npx playwright install --with-deps chromium
+      # and give playwright.config.ts a `webServer` that builds + serves the app.
+      # Until then the e2e stage auto-skips (no specs) and needs no browser.
+
+      - name: Verify (full gate)
+        run: npm run verify:full
+        env:
+          TZ: UTC
+          CI: 'true'
+
+      - name: Upload verify summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verify-result
+          path: verify-result.json
+          if-no-files-found: ignore
