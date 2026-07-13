@@ -3,23 +3,32 @@ import cors from 'cors';
 import helmet from 'helmet';
 import path from 'node:path';
 import { config } from './config';
+import { createApiRouter } from './routes';
+
+/** Overrides let tests inject fake keys, a tiny rate limit, or a short timeout. */
+export interface CreateAppOptions {
+  orsApiKey?: string;
+  openweatherApiKey?: string;
+  rateLimitPerMin?: number;
+  upstreamTimeoutMs?: number;
+  nodeEnv?: string;
+  corsAllowedOrigins?: string[];
+}
 
 /**
- * Express gateway factory. Exported (not auto-started) so tests can drive it with
- * supertest in-process, with zero open ports and zero live upstream calls.
- *
- * Phase 1 (loop) fills in /api/route and /api/weather with: zod input validation
- * (lat∈[-90,90], lon∈[-180,180], bounded coordinate arrays), per-IP rate limiting
- * under the 40/min ORS ceiling, hardcoded upstream URLs (no client-supplied hosts),
- * 8–10s timeouts, short-TTL caching, and 429→Retry-After passthrough.
+ * Express gateway factory. Exported (not auto-started) so tests can drive it with supertest
+ * in-process. Upstream calls go through MSW in tests — no live sockets, no real keys.
  */
-export function createApp(): Express {
+export function createApp(options: CreateAppOptions = {}): Express {
+  const nodeEnv = options.nodeEnv ?? config.nodeEnv;
+  const corsAllowedOrigins = options.corsAllowedOrigins ?? config.corsAllowedOrigins;
+
   const app = express();
   app.disable('x-powered-by');
   app.use(helmet());
   app.use(
     cors({
-      origin: config.corsAllowedOrigins.length > 0 ? config.corsAllowedOrigins : false,
+      origin: corsAllowedOrigins.length > 0 ? corsAllowedOrigins : false,
     }),
   );
   app.use(express.json({ limit: '32kb' }));
@@ -29,13 +38,20 @@ export function createApp(): Express {
     res.status(200).json({ status: 'ok', uptime: process.uptime() });
   });
 
-  // API gateway endpoints — advertise Not Implemented until the loop wires them.
-  app.all('/api/route', notImplemented);
-  app.all('/api/weather', notImplemented);
+  // Secure proxy gateway: validates input, injects server secrets, never leaks them.
+  app.use(
+    '/api',
+    createApiRouter({
+      orsApiKey: options.orsApiKey ?? config.orsApiKey,
+      openweatherApiKey: options.openweatherApiKey ?? config.openweatherApiKey,
+      rateLimitPerMin: options.rateLimitPerMin ?? config.rateLimitPerMin,
+      upstreamTimeoutMs: options.upstreamTimeoutMs ?? config.upstreamTimeoutMs,
+    }),
+  );
 
   // Static SPA (prod only): serve the built frontend, with an SPA history fallback
   // registered AFTER /api so deep-link refreshes work but never shadow the API.
-  if (config.nodeEnv === 'production') {
+  if (nodeEnv === 'production') {
     const publicDir = path.join(__dirname, '..', 'public');
     app.use(express.static(publicDir));
     app.get('*', (req: Request, res: Response, next: NextFunction) => {
@@ -52,15 +68,25 @@ export function createApp(): Express {
     res.status(404).json({ error: 'not_found', path: req.path });
   });
 
-  // Centralized error handler → clean JSON (the Radix-toast error contract).
+  // Centralized error handler → clean JSON (the Radix-toast error contract). Respects the
+  // status of well-known errors (e.g. express.json's 413 PayloadTooLargeError).
   app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
+    const status = errorStatus(err);
     const message = err instanceof Error ? err.message : 'internal_error';
-    res.status(500).json({ error: 'internal_error', message });
+    res.status(status).json({
+      error: status === 413 ? 'payload_too_large' : 'internal_error',
+      message,
+    });
   });
 
   return app;
 }
 
-function notImplemented(_req: Request, res: Response): void {
-  res.status(501).json({ error: 'not_implemented' });
+function errorStatus(err: unknown): number {
+  if (typeof err === 'object' && err !== null) {
+    const e = err as { status?: unknown; statusCode?: unknown };
+    if (typeof e.status === 'number') return e.status;
+    if (typeof e.statusCode === 'number') return e.statusCode;
+  }
+  return 500;
 }

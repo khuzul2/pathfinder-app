@@ -15,6 +15,8 @@ const EnvSchema = z.object({
   ORS_API_KEY: z.string().default(''),
   OPENWEATHER_API_KEY: z.string().default(''),
   CORS_ALLOWED_ORIGINS: z.string().default(''),
+  RATE_LIMIT_PER_MIN: z.coerce.number().int().positive().default(120),
+  UPSTREAM_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 });
 
 const parsed = EnvSchema.parse(process.env);
@@ -27,6 +29,8 @@ export const config = {
   corsAllowedOrigins: parsed.CORS_ALLOWED_ORIGINS.split(',')
     .map((s) => s.trim())
     .filter(Boolean),
+  rateLimitPerMin: parsed.RATE_LIMIT_PER_MIN,
+  upstreamTimeoutMs: parsed.UPSTREAM_TIMEOUT_MS,
 } as const;
 
 export type AppConfig = typeof config;

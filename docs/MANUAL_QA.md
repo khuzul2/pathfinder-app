@@ -20,6 +20,14 @@ must never be faked green in an automated test. A human runs them at staging / r
 - [ ] Multi-day export: each day's course + shelter waypoints load correctly on-device.
 - [ ] The plain `.gpx` download fallback works on desktop and mobile browsers.
 
+## Container / deploy (no Docker daemon in the loop sandbox)
+- [ ] `docker build --build-arg VITE_MAPBOX_ACCESS_TOKEN=pk.xxx -t pathfinder .` succeeds and
+      the image runs (`docker run -p 8080:8080 --env-file .env pathfinder`, `/healthz` ok).
+      Build outputs (`backend/dist/server.js`, `frontend/dist/index.html`) are verified by the
+      loop; the image assembly itself is checked here / in CI.
+- [ ] Cloud Run deploy: secrets mounted from Secret Manager (not baked), Mapbox token
+      URL-restricted to the deployed origin.
+
 ## Human-eye / UX
 - [ ] Light and dark themes both legible; WCAG AA contrast holds for text.
 - [ ] Hazard styling is never color-only (icon/label present).

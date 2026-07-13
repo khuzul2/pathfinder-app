@@ -21,20 +21,22 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
       `geo.ts` reference + tests. DoD: fixtures parse contracts; lib coverage ≥ thresholds.
       Verify: `npm run verify:full`.
 
-## Phase 1 — Secure proxy gateway
+## Phase 1 — Secure proxy gateway  ✅ (gate green, 37 tests)
 
-- [ ] **P1-1** `POST /api/route` → ORS `foot-hiking/geojson`, injecting `ORS_API_KEY`.
-      DoD: supertest (MSW upstream) asserts (a) fake key injected upstream, (b) key never in
-      client response, (c) response validates `OrsRouteResponseSchema`. Verify: `npm test`.
-- [ ] **P1-2** zod input validation + body cap + upstream allow-list (SSRF guard).
-      DoD: malformed `coordinates`/`lat`/`lon` → 400; oversized body → 413. Verify: `npm test`.
-- [ ] **P1-3** `GET /api/weather` → One Call 3.0 (keep `minutely`+`alerts`), per-IP rate
-      limit, timeouts, `429→Retry-After`, short-TTL cache. DoD: contract + limiter + cap-hit
-      tests green. Verify: `npm test`.
-- [ ] **P1-4** Proxy Overpass + RainViewer (server cache, stable UA). DoD: fixture-backed
-      contract tests. Verify: `npm test`.
-- [ ] **P1-5** `no-secret-leak` test + prod Dockerfile + `docker-compose` dev + `.dockerignore`
-      verified. DoD: `verify:full` secret-scan green; `docker build` succeeds. Verify: `npm run verify:full`.
+- [x] **P1-1** `POST /api/route` → ORS `foot-hiking/geojson`, injecting `ORS_API_KEY`.
+      Supertest (MSW upstream) asserts fake key injected upstream + key never in client
+      response + FeatureCollection shape. `backend/src/{routes,upstreams}.ts`, `route.test.ts`.
+- [x] **P1-2** zod input validation + 32kb body cap + hardcoded upstream URLs (SSRF guard).
+      Malformed coords/lat/lon → 400; oversized body → 413. `validation.ts`, tests.
+- [x] **P1-3** `GET /api/weather` → One Call 3.0 (keeps `minutely`+`alerts`), per-IP rate
+      limit, per-upstream timeouts (→504), `429→Retry-After`, short-TTL cache. `weather.test.ts`,
+      `ratelimit.test.ts`.
+- [x] **P1-4** Proxy Overpass (`/api/pois`) + RainViewer (`/api/radar`) with server cache +
+      stable UA. `poi.test.ts`, `radar.test.ts`.
+- [x] **P1-5** secret-scan gate green; prod Dockerfile + dev `docker-compose` + `.dockerignore`
+      present; build outputs match the image COPY sources; compiled server smoke-tested
+      (`/healthz` ok, 503 on missing key, 400 on bad input). NOTE: `docker build` itself runs
+      in CI / manual QA (no daemon in the loop's sandbox) — see `docs/MANUAL_QA.md`.
 
 ## Phase 2 — Map workspace & basemap
 
