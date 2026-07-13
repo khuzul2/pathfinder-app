@@ -50,14 +50,22 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
 - Notes: real Mapbox rendering needs a **public `pk.` token** (manual QA); the `secret-scan`
   gate now also fails on a leaked Mapbox `sk.` secret token.
 
-## Phase 3 — Route snapping & elevation (Tobler)
+## Phase 3 — Route snapping & elevation (Tobler)  ✅ (gate green, 102 tests)
 
-- [ ] **P3-1** Pin drop / drag waypoints (draggable markers, keyboard-accessible alt entry).
-- [ ] **P3-2** Wire pins → `/api/route`; render snapped GeoJSON line (TanStack Query +
-      AbortController fixes out-of-order).
-- [ ] **P3-3** `tobler.ts` + `elevation.ts` (resample/smooth/clamp) from ORS elevation;
-      elevation card + ascent. DoD: unit tests (uphill/downhill/flat, −0.05 offset, γ by
-      surface code) + a golden route time within tolerance. Verify: `npm run verify:full`.
+- [x] **P3-1** Click-to-add + draggable waypoint markers on the map; a Clear control.
+      Imperative Mapbox wiring in `MapCanvas.tsx` (manual QA); store holds `waypoints`.
+- [x] **P3-2** `routeApi.requestRoute` → `/api/route`, validated with `OrsRouteResponseSchema`;
+      `useRoute` (TanStack Query + AbortController) cancels stale/out-of-order requests and
+      mirrors results/errors into the store; snapped GeoJSON line drawn on the map.
+      MSW-backed tests (`routeApi.test.ts`, `useRoute.test.tsx`).
+- [x] **P3-3** `tobler.ts` (speed/effective/segment-time) + `elevation.ts`
+      (resample/smooth/slope-clamp/ascent) + `surfaceFactor.ts` (ORS code→γ) + `route.ts`
+      (`analyzeRoute` pipeline). Exhaustive unit tests incl. a GOLDEN route test on the ORS
+      fixture (ascent ≈32.9 m, sane distance/time). `ElevationCard` shows distance/ascent/
+      time; `ElevationChart` (Recharts) drives chart↔map hover-sync. Verify: `npm run verify:full`.
+- Notes: ORS elevation is the single source of truth; time computed on ORS vertices so
+  surface γ maps cleanly (resample/smooth helpers reserved for dense-DEM/slicing). Real map
+  rendering + live routing = manual QA (needs a pk. token + backend keys).
 
 ## Phase 4 — Multi-day slicing & POI
 

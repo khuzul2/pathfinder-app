@@ -2,14 +2,22 @@ import { MapCanvas } from './components/MapCanvas';
 import { RadarToggle } from './components/RadarToggle';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Attribution } from './components/Attribution';
+import { ElevationCard } from './components/ElevationCard';
+import { ElevationChart } from './components/ElevationChart';
 import { useApplyTheme } from './hooks/useApplyTheme';
+import { useRoute } from './hooks/useRoute';
+import { useAppStore } from './state/store';
 
 /**
- * App shell: fullscreen map with floating controls. The sidebar/elevation card and mobile
- * bottom sheet arrive in Phases 3–5.
+ * App shell: fullscreen map with floating controls + a bottom route panel. The mobile
+ * bottom sheet and sidebar refinements arrive in Phase 5.
  */
 export function App() {
   useApplyTheme();
+  useRoute(); // fetches + analyzes the route whenever waypoints change
+
+  const waypointCount = useAppStore((s) => s.waypoints.length);
+  const clearWaypoints = useAppStore((s) => s.clearWaypoints);
 
   return (
     <div className="relative h-full w-full bg-canvas-light dark:bg-canvas-dark">
@@ -22,8 +30,26 @@ export function App() {
       </header>
 
       <div className="absolute right-4 top-4 z-10 flex gap-2">
+        {waypointCount > 0 && (
+          <button
+            type="button"
+            onClick={clearWaypoints}
+            className="rounded-lg bg-white px-3 py-2 text-sm font-medium text-slate-accent shadow-fab dark:bg-neutral-800 dark:text-neutral-100"
+          >
+            Clear
+          </button>
+        )}
         <RadarToggle />
         <ThemeToggle />
+      </div>
+
+      <div className="pointer-events-none absolute inset-x-0 bottom-4 z-10 mx-auto flex max-w-3xl flex-col gap-2 px-4">
+        <div className="pointer-events-auto">
+          <ElevationCard />
+        </div>
+        <div className="pointer-events-auto">
+          <ElevationChart />
+        </div>
       </div>
 
       <Attribution />

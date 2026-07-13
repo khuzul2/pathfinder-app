@@ -1,23 +1,45 @@
 import { useEffect, useRef } from 'react';
-import type { Map as MapboxMap } from 'mapbox-gl';
+import type { Map as MapboxMap, Marker, MapOptions, MarkerOptions, GeoJSONSource } from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { useAppStore } from '../state/store';
 import { MAP_STYLE, DEFAULT_CENTER, DEFAULT_ZOOM } from '../lib/mapConfig';
 import { buildRadarTileUrl, RADAR_MAX_ZOOM } from '../lib/radar';
 
+/** The subset of the lazy-loaded mapbox-gl default export we use. */
+interface MapboxApi {
+  accessToken: string | null | undefined;
+  Map: new (options: MapOptions) => MapboxMap;
+  Marker: new (options?: MarkerOptions) => Marker;
+}
+
 const RADAR_SOURCE = 'rainviewer-radar';
 const RADAR_LAYER = 'rainviewer-radar-layer';
+const ROUTE_SOURCE = 'route';
+const ROUTE_LAYER = 'route-line';
 
 /**
- * The Mapbox GL canvas. mapbox-gl (~800 KB) is lazy-imported inside the effect so it stays
- * out of the initial bundle — and out of jsdom component tests, which have no token and no
- * WebGL. The imperative map wiring here is covered by manual QA (needs a real pk. token),
- * while the pure radar/URL logic it uses is unit-tested in `lib/radar.ts`.
+ * The Mapbox GL canvas + all imperative map wiring (waypoint markers, the snapped route
+ * line, radar overlay, hover locator). mapbox-gl is lazy-imported so it stays out of the
+ * initial bundle and out of jsdom tests (no token → the map never initializes). This
+ * imperative layer is verified by manual QA; the pure logic it calls (`lib/*`) is unit-tested.
  */
 export function MapCanvas() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapboxMap | null>(null);
+  const mapboxRef = useRef<MapboxApi | null>(null);
+  const readyRef = useRef(false);
+  const markersRef = useRef<Marker[]>([]);
+  const hoverMarkerRef = useRef<Marker | null>(null);
 
+  const waypoints = useAppStore((s) => s.waypoints);
+  const route = useAppStore((s) => s.route);
+  const hoverIndex = useAppStore((s) => s.hoverIndex);
+  const radarEnabled = useAppStore((s) => s.radarEnabled);
+  const radarHost = useAppStore((s) => s.radarHost);
+  const radarFrames = useAppStore((s) => s.radarFrames);
+  const activeFrameIndex = useAppStore((s) => s.activeFrameIndex);
+
+  // --- init the map once ---
   useEffect(() => {
     const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
     const container = containerRef.current;
@@ -28,12 +50,20 @@ export function MapCanvas() {
       try {
         const mapboxgl = (await import('mapbox-gl')).default;
         if (cancelled) return;
+        mapboxRef.current = mapboxgl;
         mapboxgl.accessToken = token;
-        mapRef.current = new mapboxgl.Map({
+        const map = new mapboxgl.Map({
           container,
           style: MAP_STYLE,
           center: [DEFAULT_CENTER[0], DEFAULT_CENTER[1]],
           zoom: DEFAULT_ZOOM,
+        });
+        mapRef.current = map;
+        map.on('load', () => {
+          readyRef.current = true;
+        });
+        map.on('click', (e) => {
+          useAppStore.getState().addWaypoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
         });
       } catch (err) {
         console.error('Map initialization failed', err);
@@ -42,16 +72,69 @@ export function MapCanvas() {
 
     return () => {
       cancelled = true;
+      readyRef.current = false;
       mapRef.current?.remove();
       mapRef.current = null;
     };
   }, []);
 
-  const radarEnabled = useAppStore((s) => s.radarEnabled);
-  const radarHost = useAppStore((s) => s.radarHost);
-  const radarFrames = useAppStore((s) => s.radarFrames);
-  const activeFrameIndex = useAppStore((s) => s.activeFrameIndex);
+  // --- waypoint markers (draggable) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    const mapboxgl = mapboxRef.current;
+    if (!map || !mapboxgl) return;
 
+    markersRef.current.forEach((m) => m.remove());
+    markersRef.current = waypoints.map((wp, index) => {
+      const marker = new mapboxgl.Marker({ color: '#4285F4', draggable: true })
+        .setLngLat([wp.lng, wp.lat])
+        .addTo(map);
+      marker.on('dragend', () => {
+        const { lng, lat } = marker.getLngLat();
+        useAppStore.getState().updateWaypoint(index, { lng, lat });
+      });
+      return marker;
+    });
+
+    return () => {
+      markersRef.current.forEach((m) => m.remove());
+      markersRef.current = [];
+    };
+  }, [waypoints]);
+
+  // --- snapped route line ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const draw = () => {
+      const coords = route?.points.map((p) => [p.lng, p.lat]) ?? [];
+      const data = {
+        type: 'Feature' as const,
+        properties: {},
+        geometry: { type: 'LineString' as const, coordinates: coords },
+      };
+      const existing = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
+      if (existing) {
+        existing.setData(data);
+        return;
+      }
+      if (coords.length === 0) return;
+      map.addSource(ROUTE_SOURCE, { type: 'geojson', data });
+      map.addLayer({
+        id: ROUTE_LAYER,
+        type: 'line',
+        source: ROUTE_SOURCE,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#0F9D58', 'line-width': 4 },
+      });
+    };
+
+    if (map.isStyleLoaded()) draw();
+    else map.once('load', draw);
+  }, [route]);
+
+  // --- radar overlay ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -79,6 +162,24 @@ export function MapCanvas() {
     if (map.isStyleLoaded()) applyRadar();
     else map.once('load', applyRadar);
   }, [radarEnabled, radarHost, radarFrames, activeFrameIndex]);
+
+  // --- hover locator dot (chart ↔ map sync) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    const mapboxgl = mapboxRef.current;
+    if (!map || !mapboxgl) return;
+
+    const point = hoverIndex != null ? route?.points[hoverIndex] : undefined;
+    if (!point) {
+      hoverMarkerRef.current?.remove();
+      hoverMarkerRef.current = null;
+      return;
+    }
+    if (!hoverMarkerRef.current) {
+      hoverMarkerRef.current = new mapboxgl.Marker({ color: '#EA4335' });
+    }
+    hoverMarkerRef.current.setLngLat([point.lng, point.lat]).addTo(map);
+  }, [hoverIndex, route]);
 
   return <div ref={containerRef} data-testid="map-canvas" className="absolute inset-0" />;
 }

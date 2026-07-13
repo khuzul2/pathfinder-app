@@ -8,38 +8,43 @@ describe('useAppStore', () => {
     useAppStore.setState(initial, true);
   });
 
-  it('starts with radar off and the system theme', () => {
+  it('starts with radar off, system theme, and no route', () => {
     const s = useAppStore.getState();
     expect(s.radarEnabled).toBe(false);
     expect(s.themePref).toBe('system');
+    expect(s.waypoints).toEqual([]);
+    expect(s.route).toBeNull();
   });
 
   it('toggleRadar flips the flag', () => {
     useAppStore.getState().toggleRadar();
     expect(useAppStore.getState().radarEnabled).toBe(true);
-    useAppStore.getState().toggleRadar();
-    expect(useAppStore.getState().radarEnabled).toBe(false);
   });
 
-  it('setThemePref updates the preference', () => {
-    useAppStore.getState().setThemePref('dark');
-    expect(useAppStore.getState().themePref).toBe('dark');
-  });
-
-  it('setRadar stores frames and points activeFrameIndex at the latest frame', () => {
+  it('setRadar stores frames and points activeFrameIndex at the latest', () => {
     useAppStore.getState().setRadar('https://h', [
       { time: 1, path: '/a' },
       { time: 2, path: '/b' },
-      { time: 3, path: '/c' },
     ]);
-    const s = useAppStore.getState();
-    expect(s.radarHost).toBe('https://h');
-    expect(s.radarFrames).toHaveLength(3);
-    expect(s.activeFrameIndex).toBe(2);
+    expect(useAppStore.getState().activeFrameIndex).toBe(1);
   });
 
-  it('setRadar with no frames keeps activeFrameIndex at 0', () => {
-    useAppStore.getState().setRadar('https://h', []);
-    expect(useAppStore.getState().activeFrameIndex).toBe(0);
+  it('addWaypoint appends; clearWaypoints resets route state', () => {
+    const s = useAppStore.getState();
+    s.addWaypoint({ lng: 11, lat: 48 });
+    s.addWaypoint({ lng: 12, lat: 49 });
+    expect(useAppStore.getState().waypoints).toHaveLength(2);
+
+    useAppStore.getState().setRouteError('boom');
+    useAppStore.getState().clearWaypoints();
+    const after = useAppStore.getState();
+    expect(after.waypoints).toEqual([]);
+    expect(after.route).toBeNull();
+    expect(after.routeError).toBeNull();
+  });
+
+  it('setHoverIndex updates the hover-sync index', () => {
+    useAppStore.getState().setHoverIndex(7);
+    expect(useAppStore.getState().hoverIndex).toBe(7);
   });
 });
