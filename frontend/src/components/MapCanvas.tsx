@@ -15,6 +15,7 @@ import { buildRadarTileUrl, RADAR_MAX_ZOOM } from '../lib/radar';
 import { POI_META } from '../lib/poiApi';
 import type { Poi } from '../lib/poiApi';
 import { haversineMeters } from '../lib/geo';
+import { segmentForHover } from '../lib/routeInsert';
 import { reverseGeocode } from '../services/geocodeClient';
 
 /** The subset of the lazy-loaded mapbox-gl default export we use. */
@@ -32,11 +33,16 @@ const RADAR_LAYER = 'rainviewer-radar-layer';
 // way two separate layers could get out of sync.
 const ROUTES_SOURCE = 'routes';
 const ROUTES_LAYER = 'routes-line';
+// Highlight of the hovered leg + a "+" handle for inserting a via-stop between two existing stops.
+const INSERT_SOURCE = 'insert-hint';
+const INSERT_LAYER = 'insert-hint-line';
 const TRAILS_SOURCE = 'waymarked-hiking';
 const TRAILS_LAYER = 'waymarked-hiking-layer';
 
 /** Waymarked Trails renders OSM hiking relations (SAC-coloured routes) as a raster overlay. */
 const TRAILS_TILES = 'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png';
+
+const EMPTY_FC = { type: 'FeatureCollection' as const, features: [] };
 
 /** Nearest POI to a point within `maxMeters`, else null (for snapping a dropped stop). */
 function nearestPoi(pois: readonly Poi[], lng: number, lat: number, maxMeters: number): Poi | null {
@@ -68,6 +74,41 @@ function addStopAt(lng: number, lat: number): void {
   void reverseGeocode(lng, lat).then((name) => {
     if (name) useAppStore.getState().updateWaypoint(index, { lng, lat, name });
   });
+}
+
+/** Insert a via-stop into the selected route at the hovered leg (POI snap / reverse-geocode name). */
+function insertStopAt(lng: number, lat: number): void {
+  const store = useAppStore.getState();
+  const route = store.route;
+  const seg = route ? segmentForHover(route.points, store.waypoints, { lng, lat }) : null;
+  const index = seg ? seg.insertAt : store.waypoints.length;
+
+  const poi = nearestPoi(store.pois, lng, lat, 100);
+  if (poi) {
+    store.insertWaypoint(index, {
+      lng: poi.lng,
+      lat: poi.lat,
+      name: poi.name ?? POI_META[poi.kind].label,
+    });
+    return;
+  }
+  store.insertWaypoint(index, { lng, lat });
+  void reverseGeocode(lng, lat).then((name) => {
+    if (!name) return;
+    const wps = useAppStore.getState().waypoints;
+    const at = wps.findIndex((w) => w.lng === lng && w.lat === lat && !w.name);
+    if (at >= 0) useAppStore.getState().updateWaypoint(at, { lng, lat, name });
+  });
+}
+
+/** The small "+" handle shown on the route to insert a via-stop. */
+function buildInsertHandle(): HTMLDivElement {
+  const el = document.createElement('div');
+  el.style.cssText =
+    'display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:9999px;background:#fff;border:2px solid #1A73E8;color:#1A73E8;font:700 15px system-ui,sans-serif;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,0.4);cursor:pointer;';
+  el.textContent = '+';
+  el.title = 'Click to add a stop here';
+  return el;
 }
 
 /** Re-resolve a stop's name after it is moved (POI snap or reverse-geocode) at position `index`. */
@@ -154,6 +195,7 @@ export function MapCanvas() {
   const mapboxRef = useRef<MapboxApi | null>(null);
   const readyRef = useRef(false);
   const hoveredAltRef = useRef<number | null>(null);
+  const insertMarkerRef = useRef<Marker | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const poiMarkersRef = useRef<Marker[]>([]);
   const poiPopupRef = useRef<Popup | null>(null);
@@ -203,7 +245,10 @@ export function MapCanvas() {
         map.on('click', (e) => {
           if (!map.getLayer(ROUTES_LAYER)) return;
           const hit = map.queryRenderedFeatures(e.point, { layers: [ROUTES_LAYER] })[0];
-          if (hit && typeof hit.id === 'number') useAppStore.getState().selectRoute(hit.id);
+          if (!hit || typeof hit.id !== 'number') return;
+          // Click the SELECTED route → insert a via-stop there; click an alternative → select it.
+          if (hit.properties?.selected) insertStopAt(e.lngLat.lng, e.lngLat.lat);
+          else useAppStore.getState().selectRoute(hit.id);
         });
         map.on('dblclick', (e) => addStopAt(e.lngLat.lng, e.lngLat.lat));
         map.on('moveend', () => {
@@ -369,11 +414,28 @@ export function MapCanvas() {
         },
       });
 
-      // Hover feedback for the (grey) alternatives — pointer cursor + a width/opacity bump.
+      // Insert-hint: highlighted leg + a draggable "+" handle, drawn above the routes.
+      map.addSource(INSERT_SOURCE, { type: 'geojson', data: EMPTY_FC });
+      map.addLayer({
+        id: INSERT_LAYER,
+        type: 'line',
+        source: INSERT_SOURCE,
+        layout: { 'line-cap': 'round', 'line-join': 'round' },
+        paint: { 'line-color': '#F9AB00', 'line-width': 9, 'line-opacity': 0.9 },
+      });
+
+      const clearInsertHint = () => {
+        (map.getSource(INSERT_SOURCE) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
+        insertMarkerRef.current?.remove();
+      };
+
       map.on('mousemove', ROUTES_LAYER, (e) => {
         map.getCanvas().style.cursor = 'pointer';
-        const id = e.features?.[0]?.id;
+        const feature = e.features?.[0];
+        const id = feature?.id;
         if (typeof id !== 'number') return;
+
+        // Grey alternatives: hover highlight.
         if (hoveredAltRef.current !== null && hoveredAltRef.current !== id) {
           map.setFeatureState(
             { source: ROUTES_SOURCE, id: hoveredAltRef.current },
@@ -382,9 +444,45 @@ export function MapCanvas() {
         }
         hoveredAltRef.current = id;
         map.setFeatureState({ source: ROUTES_SOURCE, id }, { hover: true });
+
+        // Selected route: show the leg being hovered + a "+" handle to insert a stop into it.
+        if (!feature?.properties?.selected) {
+          clearInsertHint();
+          return;
+        }
+        const store = useAppStore.getState();
+        const seg = store.route
+          ? segmentForHover(store.route.points, store.waypoints, e.lngLat)
+          : null;
+        if (seg && store.route) {
+          const legCoords = store.route.points
+            .slice(seg.segStart, seg.segEnd + 1)
+            .map((p) => [p.lng, p.lat] as [number, number]);
+          (map.getSource(INSERT_SOURCE) as GeoJSONSource | undefined)?.setData({
+            type: 'FeatureCollection',
+            features: [
+              {
+                type: 'Feature',
+                properties: {},
+                geometry: { type: 'LineString', coordinates: legCoords },
+              },
+            ],
+          });
+          if (!insertMarkerRef.current && mapboxRef.current) {
+            const handle = buildInsertHandle();
+            handle.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              const ll = insertMarkerRef.current?.getLngLat();
+              if (ll) insertStopAt(ll.lng, ll.lat);
+            });
+            insertMarkerRef.current = new mapboxRef.current.Marker({ element: handle });
+          }
+          insertMarkerRef.current?.setLngLat([e.lngLat.lng, e.lngLat.lat]).addTo(map);
+        }
       });
       map.on('mouseleave', ROUTES_LAYER, () => {
         map.getCanvas().style.cursor = '';
+        clearInsertHint();
         if (hoveredAltRef.current !== null) {
           map.setFeatureState(
             { source: ROUTES_SOURCE, id: hoveredAltRef.current },

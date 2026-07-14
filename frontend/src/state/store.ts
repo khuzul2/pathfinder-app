@@ -30,6 +30,7 @@ export interface AppState {
   // Routing (Phase 3, named stops Phase 8)
   waypoints: Waypoint[];
   addWaypoint: (point: Waypoint) => void;
+  insertWaypoint: (index: number, point: Waypoint) => void;
   updateWaypoint: (index: number, point: Waypoint) => void;
   removeWaypoint: (index: number) => void;
   moveWaypoint: (from: number, to: number) => void;
@@ -121,6 +122,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   waypoints: [],
   addWaypoint: (point) => set((state) => ({ waypoints: [...state.waypoints, point] })),
+  insertWaypoint: (index, point) =>
+    set((state) => {
+      const next = [...state.waypoints];
+      next.splice(Math.max(0, Math.min(index, next.length)), 0, point);
+      return { waypoints: next };
+    }),
   updateWaypoint: (index, point) =>
     set((state) => ({
       waypoints: state.waypoints.map((w, i) => (i === index ? point : w)),
