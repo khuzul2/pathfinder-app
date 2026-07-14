@@ -35,11 +35,23 @@ function postOrs(
   });
 }
 
+/** Extract a human-readable message from an ORS error response. */
+async function orsError(res: Response): Promise<string> {
+  const body = (await res.json().catch(() => null)) as {
+    error?: { message?: string } | string;
+  } | null;
+  const detail = body?.error;
+  const msg = typeof detail === 'string' ? detail : detail?.message;
+  return msg ?? `no walking route found (${res.status})`;
+}
+
 /**
- * Request the route(s) directly from ORS: for a simple start→end pair we also ask for
- * `alternative_routes`, returning the recommended route first then any alternatives. Alternatives
- * are best-effort — if the request is rejected we retry with just the primary route, then fall
- * back to a synthetic route so the demo always renders something.
+ * Request the route(s) directly from ORS. An "enhanced" request snaps each clicked point to the
+ * nearest trail (`radiuses: -1`, unlimited) and — for a simple start→end pair — asks for
+ * `alternative_routes`; both are best-effort, so a rejection retries with a minimal `base` request.
+ * With a real key, a genuine failure is SURFACED (throwing) rather than papered over with a
+ * straight synthetic line that looks like a broken route. The synthetic route is only used when
+ * no key is configured (keyless demo).
  */
 export async function requestRoutesDirect(
   waypoints: readonly LngLat[],
@@ -55,23 +67,23 @@ export async function requestRoutesDirect(
     elevation: true,
     extra_info: ['surface', 'traildifficulty', 'steepness'],
   };
-  const body =
-    coordinates.length === 2
-      ? { ...base, alternative_routes: { target_count: 3, share_factor: 0.6, weight_factor: 1.6 } }
-      : base;
+  const enhanced = {
+    ...base,
+    radiuses: coordinates.map(() => -1),
+    ...(coordinates.length === 2
+      ? { alternative_routes: { target_count: 3, share_factor: 0.6, weight_factor: 1.6 } }
+      : {}),
+  };
 
   try {
-    const res = await postOrs(profile, body, signal);
-    if (res.ok) return toRouteAnalyses(await res.json());
-    // Some deployments reject alternative_routes — retry once with only the primary route.
-    if (body !== base) {
-      const retry = await postOrs(profile, base, signal);
-      if (retry.ok) return toRouteAnalyses(await retry.json());
-    }
-    throw new Error(`ORS responded ${res.status}`);
+    let res = await postOrs(profile, enhanced, signal);
+    // radiuses / alternatives may be rejected — fall back to the minimal request before giving up.
+    if (!res.ok) res = await postOrs(profile, base, signal);
+    if (!res.ok) throw new Error(await orsError(res));
+    return toRouteAnalyses(await res.json());
   } catch (err) {
     if (signal?.aborted) throw err;
-    return [toRouteAnalysis(synthRouteResponse(coordinates))];
+    throw err instanceof Error ? err : new Error('Routing failed');
   }
 }
 

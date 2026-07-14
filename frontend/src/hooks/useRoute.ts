@@ -15,6 +15,7 @@ export function useRoute() {
   const avoidRoads = useAppStore((s) => s.routingOptions.avoidRoads);
   const setAlternatives = useAppStore((s) => s.setAlternatives);
   const setRouteError = useAppStore((s) => s.setRouteError);
+  const setRouting = useAppStore((s) => s.setRouting);
 
   const query = useQuery({
     queryKey: ['route', waypoints, avoidRoads],
@@ -24,13 +25,21 @@ export function useRoute() {
     retry: false,
   });
 
+  // Error wins over any stale success: on failure, surface the message AND drop the old line
+  // (so a broken route never lingers on the map); on success, clear the error and show the route.
   useEffect(() => {
-    if (query.data) setAlternatives(query.data);
-  }, [query.data, setAlternatives]);
+    if (query.error) {
+      setRouteError((query.error as Error).message);
+      setAlternatives([]);
+    } else if (query.data) {
+      setRouteError(null);
+      setAlternatives(query.data);
+    }
+  }, [query.data, query.error, setAlternatives, setRouteError]);
 
   useEffect(() => {
-    setRouteError(query.error ? (query.error as Error).message : null);
-  }, [query.error, setRouteError]);
+    setRouting(query.isFetching);
+  }, [query.isFetching, setRouting]);
 
   return query;
 }

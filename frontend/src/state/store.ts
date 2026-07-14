@@ -48,6 +48,10 @@ export interface AppState {
   routeError: string | null;
   setRouteError: (message: string | null) => void;
 
+  /** True while a route request is in flight (drives the "Routing…" indicator). */
+  routing: boolean;
+  setRouting: (routing: boolean) => void;
+
   /** Elevation-chart ↔ map hover-sync: index into route.points (null = no hover). */
   hoverIndex: number | null;
   setHoverIndex: (index: number | null) => void;
@@ -162,6 +166,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   routeError: null,
   setRouteError: (message) => set({ routeError: message }),
+
+  routing: false,
+  setRouting: (routing) => set({ routing }),
 
   hoverIndex: null,
   setHoverIndex: (index) => set({ hoverIndex: index }),

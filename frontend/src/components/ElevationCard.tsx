@@ -14,6 +14,7 @@ function Stat({ label, value }: { label: string; value: string }) {
 export function ElevationCard() {
   const route = useAppStore((s) => s.route);
   const error = useAppStore((s) => s.routeError);
+  const routing = useAppStore((s) => s.routing);
 
   if (error) {
     return (
@@ -22,6 +23,18 @@ export function ElevationCard() {
         className="rounded-lg bg-white/95 px-4 py-2 text-sm text-hazard-coral shadow-fab dark:bg-neutral-800/95"
       >
         Could not compute route: {error}
+      </div>
+    );
+  }
+
+  if (routing && !route) {
+    return (
+      <div
+        role="status"
+        className="flex items-center gap-2 rounded-lg bg-white/95 px-4 py-2 text-sm text-slate-accent shadow-fab dark:bg-neutral-800/95 dark:text-neutral-100"
+      >
+        <span className="h-3 w-3 animate-pulse rounded-full bg-trail-green" aria-hidden="true" />
+        Routing…
       </div>
     );
   }

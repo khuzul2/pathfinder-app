@@ -35,6 +35,8 @@ describe('searchPlaces', () => {
     expect(capturedUrl!.searchParams.get('q')).toBe('serso');
     expect(capturedUrl!.searchParams.get('access_token')).toBe('pk.test');
     expect(capturedUrl!.searchParams.get('proximity')).toBe('11.6,48.15');
+    // "poi" is not a valid Geocoding v6 type and 422s the request — keep it out.
+    expect(capturedUrl!.searchParams.get('types')).not.toContain('poi');
   });
 
   it('short-circuits (no request) for a too-short query', async () => {

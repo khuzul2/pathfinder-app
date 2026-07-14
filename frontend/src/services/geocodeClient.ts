@@ -31,7 +31,9 @@ export async function searchPlaces(
     access_token: token,
     autocomplete: 'true',
     limit: String(opts.limit ?? 6),
-    types: 'address,street,place,locality,neighborhood,poi,region',
+    // Valid Geocoding v6 feature types only — "poi" is NOT one (it 422s the whole request),
+    // which is why village/place searches returned nothing.
+    types: 'region,district,place,locality,neighborhood,street,address',
   });
   if (opts.proximity) params.set('proximity', `${opts.proximity.lng},${opts.proximity.lat}`);
 

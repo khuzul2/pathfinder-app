@@ -35,6 +35,16 @@ const TRAILS_LAYER = 'waymarked-hiking-layer';
 /** Waymarked Trails renders OSM hiking relations (SAC-coloured routes) as a raster overlay. */
 const TRAILS_TILES = 'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png';
 
+/** A numbered, draggable stop pin coloured by role (start green · via blue · end red). */
+function buildWaypointElement(index: number, total: number, name?: string): HTMLDivElement {
+  const color = index === 0 ? '#0F9D58' : index === total - 1 ? '#EA4335' : '#4285F4';
+  const el = document.createElement('div');
+  el.style.cssText = `display:flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:9999px;background:${color};border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,0.4);color:#fff;font:700 13px system-ui,sans-serif;cursor:grab;`;
+  el.textContent = String(index + 1);
+  el.title = name ?? (index === 0 ? 'Start' : index === total - 1 ? 'End' : `Stop ${index + 1}`);
+  return el;
+}
+
 /** A round emoji pin element for a POI; pinned shelters read larger with a coral ring. */
 function buildPoiElement(poi: Poi, pinned: boolean): HTMLDivElement {
   const meta = POI_META[poi.kind];
@@ -164,21 +174,15 @@ export function MapCanvas() {
     const mapboxgl = mapboxRef.current;
     if (!map || !mapboxgl) return;
 
-    const roleColor = (index: number): string => {
-      if (index === 0) return '#0F9D58'; // start
-      if (index === waypoints.length - 1) return '#EA4335'; // end
-      return '#4285F4'; // via
-    };
-
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = waypoints.map((wp, index) => {
-      const marker = new mapboxgl.Marker({ color: roleColor(index), draggable: true })
+      const el = buildWaypointElement(index, waypoints.length, wp.name);
+      const marker = new mapboxgl.Marker({ element: el, draggable: true })
         .setLngLat([wp.lng, wp.lat])
         .addTo(map);
-      if (wp.name) marker.getElement().title = wp.name;
       marker.on('dragend', () => {
         const { lng, lat } = marker.getLngLat();
-        // Keep the stop's label when its position is dragged.
+        // Keep the stop's label when its position is dragged; the route re-snaps to trails.
         useAppStore.getState().updateWaypoint(index, { lng, lat, name: wp.name });
       });
       return marker;

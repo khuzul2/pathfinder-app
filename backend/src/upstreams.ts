@@ -72,6 +72,9 @@ export async function fetchRoute(
     coordinates: body.coordinates,
     elevation: true,
     extra_info: ['surface', 'traildifficulty', 'steepness'],
+    // Snap each waypoint to the nearest routable trail (unlimited search) so clicks that don't
+    // land exactly on a path still route.
+    radiuses: body.coordinates.map(() => -1),
   };
   // ORS only supports alternatives for exactly two waypoints.
   if (body.alternatives && body.coordinates.length === 2) {
