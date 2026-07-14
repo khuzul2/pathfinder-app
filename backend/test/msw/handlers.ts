@@ -6,17 +6,25 @@ import { resolve } from 'node:path';
 // tests can prove the proxy forwards the (fake) key upstream — with zero real keys.
 
 export const ORS_URL = 'https://api.openrouteservice.org/v2/directions/foot-hiking/geojson';
+/** Matches any foot profile so a `foot-walking` request is served too. */
+export const ORS_URL_PATTERN = 'https://api.openrouteservice.org/v2/directions/:profile/geojson';
 export const OPENWEATHER_URL = 'https://api.openweathermap.org/data/3.0/onecall';
 export const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 export const RAINVIEWER_URL = 'https://api.rainviewer.com/public/weather-maps.json';
 
-export const captured: { orsAuth: string | null; weatherAppid: string | null } = {
+export const captured: {
+  orsAuth: string | null;
+  orsProfile: string | null;
+  weatherAppid: string | null;
+} = {
   orsAuth: null,
+  orsProfile: null,
   weatherAppid: null,
 };
 
 export function resetCaptured(): void {
   captured.orsAuth = null;
+  captured.orsProfile = null;
   captured.weatherAppid = null;
 }
 
@@ -25,8 +33,9 @@ function fixture(name: string): any {
 }
 
 export const handlers = [
-  http.post(ORS_URL, ({ request }) => {
+  http.post(ORS_URL_PATTERN, ({ request, params }) => {
     captured.orsAuth = request.headers.get('authorization');
+    captured.orsProfile = typeof params.profile === 'string' ? params.profile : null;
     return HttpResponse.json(fixture('ors-foot-hiking.geojson'));
   }),
   http.get(OPENWEATHER_URL, ({ request }) => {

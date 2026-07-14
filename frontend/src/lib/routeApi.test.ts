@@ -42,6 +42,23 @@ describe('requestRoute', () => {
     expect(analysis.points.length).toBeGreaterThan(1);
   });
 
+  it('includes the profile in the body when provided', async () => {
+    await requestRoute(
+      [
+        { lng: 11.5761, lat: 48.1374 },
+        { lng: 11.582, lat: 48.1402 },
+      ],
+      { profile: 'foot-walking' },
+    );
+    expect(capturedBody).toEqual({
+      coordinates: [
+        [11.5761, 48.1374],
+        [11.582, 48.1402],
+      ],
+      profile: 'foot-walking',
+    });
+  });
+
   it('throws on a non-ok proxy response', async () => {
     server.use(http.post('*/api/route', () => new HttpResponse(null, { status: 502 })));
     await expect(

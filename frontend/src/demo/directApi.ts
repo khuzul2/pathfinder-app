@@ -4,6 +4,7 @@ import { RainViewerMapsSchema, type RainViewerMaps } from '../contracts/rainview
 import { synthRouteResponse, synthPoisResponse } from './synth';
 import type { RouteAnalysis } from '../lib/route';
 import type { LngLat } from '../lib/geo';
+import type { RouteFetchOptions } from '../lib/routingOptions';
 
 /**
  * DEMO-mode data source: call the real upstreams directly from the browser (no backend).
@@ -13,18 +14,19 @@ import type { LngLat } from '../lib/geo';
  * (`dataClient` routes through the backend proxy instead).
  */
 const ORS_KEY = import.meta.env.VITE_ORS_API_KEY;
-const ORS_URL = 'https://api.openrouteservice.org/v2/directions/foot-hiking/geojson';
+const ORS_BASE = 'https://api.openrouteservice.org/v2/directions';
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const RAINVIEWER_URL = 'https://api.rainviewer.com/public/weather-maps.json';
 
 export async function requestRouteDirect(
   waypoints: readonly LngLat[],
+  options: RouteFetchOptions = {},
   signal?: AbortSignal,
 ): Promise<RouteAnalysis> {
   const coordinates = waypoints.map((w): [number, number] => [w.lng, w.lat]);
   if (!ORS_KEY) return toRouteAnalysis(synthRouteResponse(coordinates));
   try {
-    const res = await fetch(ORS_URL, {
+    const res = await fetch(`${ORS_BASE}/${options.profile ?? 'foot-hiking'}/geojson`, {
       method: 'POST',
       headers: {
         Authorization: ORS_KEY,

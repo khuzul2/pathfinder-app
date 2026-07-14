@@ -25,6 +25,29 @@ describe('POST /api/route', () => {
     expect(JSON.stringify(res.body)).not.toContain('test-ors-key');
   });
 
+  it('defaults to the foot-hiking profile', async () => {
+    const app = createApp({ orsApiKey: 'test-ors-key' });
+    await request(app).post('/api/route').send(validBody);
+    expect(captured.orsProfile).toBe('foot-hiking');
+  });
+
+  it('forwards a selected foot-walking profile upstream', async () => {
+    const app = createApp({ orsApiKey: 'test-ors-key' });
+    const res = await request(app)
+      .post('/api/route')
+      .send({ ...validBody, profile: 'foot-walking' });
+    expect(res.status).toBe(200);
+    expect(captured.orsProfile).toBe('foot-walking');
+  });
+
+  it('rejects an unknown profile with 400 (SSRF allowlist)', async () => {
+    const app = createApp({ orsApiKey: 'test-ors-key' });
+    const res = await request(app)
+      .post('/api/route')
+      .send({ ...validBody, profile: 'driving-car' });
+    expect(res.status).toBe(400);
+  });
+
   it('rejects out-of-range coordinates with 400', async () => {
     const app = createApp({ orsApiKey: 'test-ors-key' });
     const res = await request(app)

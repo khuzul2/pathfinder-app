@@ -7,6 +7,7 @@ import type { Poi, Bbox, PoiKind } from '../lib/poiApi';
 import type { SlicePlan } from '../lib/slicing';
 import { SLICING } from '../lib/constants';
 import { makeSavedRoute, defaultRouteName, type SavedRoute } from '../lib/savedRoute';
+import { DEFAULT_ROUTING_OPTIONS, type RoutingOptions } from '../lib/routingOptions';
 import { localRouteStorage } from '../services/routeStorage';
 
 export type { Waypoint };
@@ -48,6 +49,10 @@ export interface AppState {
   // Map layers (Phase 6)
   trailsOverlay: boolean;
   toggleTrailsOverlay: () => void;
+
+  // Routing options (Phase 8)
+  routingOptions: RoutingOptions;
+  setRoutingOptions: (patch: Partial<RoutingOptions>) => void;
 
   // POI + multi-day slicing (Phase 4)
   pois: Poi[];
@@ -145,6 +150,10 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   trailsOverlay: false,
   toggleTrailsOverlay: () => set((state) => ({ trailsOverlay: !state.trailsOverlay })),
+
+  routingOptions: DEFAULT_ROUTING_OPTIONS,
+  setRoutingOptions: (patch) =>
+    set((state) => ({ routingOptions: { ...state.routingOptions, ...patch } })),
 
   pois: [],
   setPois: (pois) => set({ pois }),

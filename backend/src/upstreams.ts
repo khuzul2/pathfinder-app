@@ -3,7 +3,7 @@ import type { RouteRequest, BboxQuery } from './validation';
 // Upstream base URLs are HARDCODED here (never client-supplied) — the SSRF guard. The proxy
 // injects server secrets and maps upstream failures to a clean status the toast layer reads.
 
-const ORS_URL = 'https://api.openrouteservice.org/v2/directions/foot-hiking/geojson';
+const ORS_BASE = 'https://api.openrouteservice.org/v2/directions';
 const OPENWEATHER_URL = 'https://api.openweathermap.org/data/3.0/onecall';
 const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const RAINVIEWER_URL = 'https://api.rainviewer.com/public/weather-maps.json';
@@ -66,8 +66,10 @@ export async function fetchRoute(
   body: RouteRequest,
   timeoutMs: number,
 ): Promise<unknown> {
+  // `profile` is a validated enum, so this URL is never client-controlled (SSRF-safe).
+  const profile = body.profile ?? 'foot-hiking';
   const res = await fetchWithTimeout(
-    ORS_URL,
+    `${ORS_BASE}/${profile}/geojson`,
     {
       method: 'POST',
       headers: {

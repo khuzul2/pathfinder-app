@@ -7,12 +7,17 @@ import { z } from 'zod';
 const Longitude = z.number().gte(-180).lte(180);
 const Latitude = z.number().gte(-90).lte(90);
 
-/** POST /api/route body — a bounded list of [lng, lat] waypoints. */
+/** ORS foot profile — an allowlist (not a client-supplied URL) so it can't widen the SSRF surface. */
+export const OrsProfileSchema = z.enum(['foot-hiking', 'foot-walking']);
+export type OrsProfile = z.infer<typeof OrsProfileSchema>;
+
+/** POST /api/route body — a bounded list of [lng, lat] waypoints and an optional foot profile. */
 export const RouteRequestSchema = z.object({
   coordinates: z
     .array(z.tuple([Longitude, Latitude]))
     .min(2)
     .max(50),
+  profile: OrsProfileSchema.optional(),
 });
 export type RouteRequest = z.infer<typeof RouteRequestSchema>;
 

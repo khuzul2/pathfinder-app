@@ -1,6 +1,7 @@
 import { OrsRouteResponseSchema } from '../contracts/ors';
 import { analyzeRoute, type RouteAnalysis } from './route';
 import type { LngLat } from './geo';
+import type { RouteFetchOptions } from './routingOptions';
 
 /** Validate a raw ORS geojson response and turn it into a RouteAnalysis (surface + difficulty). */
 export function toRouteAnalysis(json: unknown): RouteAnalysis {
@@ -23,12 +24,15 @@ export function toRouteAnalysis(json: unknown): RouteAnalysis {
  */
 export async function requestRoute(
   waypoints: readonly LngLat[],
+  options: RouteFetchOptions = {},
   signal?: AbortSignal,
 ): Promise<RouteAnalysis> {
+  const body: Record<string, unknown> = { coordinates: waypoints.map((w) => [w.lng, w.lat]) };
+  if (options.profile) body.profile = options.profile;
   const res = await fetch('/api/route', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ coordinates: waypoints.map((w) => [w.lng, w.lat]) }),
+    body: JSON.stringify(body),
     signal,
   });
   if (!res.ok) {

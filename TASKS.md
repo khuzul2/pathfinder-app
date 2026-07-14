@@ -129,8 +129,11 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
       `contracts/mapbox.ts` + `services/geocodeClient.ts` + `usePlaceSearch` (debounced) +
       `SearchBox`. `Waypoint` gains a `name`; `WaypointList` is now an ordered **stops** panel
       (start/via/end roles, reorder ↑↓, reverse, delete); map markers colored by role.
-- [ ] **P8-2** Routing options: avoid vehicle-traffic roads (prioritize trails) + auto-add
-      overnight stays (multi-select huts/campsites/bivvy; bivvy = anywhere at ideal spacing).
+- [x] **P8-2a** Routing option — **prefer trails / avoid roads**: `lib/routingOptions.ts`
+      (`orsProfile`: foot-hiking ↔ foot-walking) threaded through the data layer + backend
+      (validated profile enum, SSRF-safe URL) + `RoutingOptions` toggle. Store `routingOptions`.
+- [ ] **P8-2b** Routing option — **auto-add overnight stays** (multi-select huts/campsites/bivvy;
+      bivvy = anywhere at ideal spacing), integrated with the day slicer.
 - [ ] **P8-3** Alternative routes (ORS `alternative_routes` for 2 stops + themed: overnight-via,
       scenic-by-surface); pick from cards, non-selected drawn faded on the map.
 
