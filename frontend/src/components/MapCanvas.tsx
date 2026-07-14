@@ -236,9 +236,115 @@ export function MapCanvas() {
           zoom: DEFAULT_ZOOM,
         });
         mapRef.current = map;
+        // Create the route + insert-hint layers and their interactions ONCE, at load, so the
+        // handlers are reliably attached (rather than racing the first route render).
         map.on('load', () => {
           readyRef.current = true;
+
+          map.addSource(ROUTES_SOURCE, { type: 'geojson', data: EMPTY_FC });
+          map.addLayer({
+            id: ROUTES_LAYER,
+            type: 'line',
+            source: ROUTES_SOURCE,
+            layout: {
+              'line-cap': 'round',
+              'line-join': 'round',
+              'line-sort-key': ['case', ['get', 'selected'], 1, 0],
+            },
+            paint: {
+              'line-color': ['case', ['get', 'selected'], '#1A73E8', '#5F6368'],
+              'line-width': [
+                'case',
+                ['get', 'selected'],
+                6,
+                ['case', ['boolean', ['feature-state', 'hover'], false], 6, 4],
+              ],
+              'line-opacity': [
+                'case',
+                ['get', 'selected'],
+                1,
+                ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.65],
+              ],
+            },
+          });
+
+          map.addSource(INSERT_SOURCE, { type: 'geojson', data: EMPTY_FC });
+          map.addLayer({
+            id: INSERT_LAYER,
+            type: 'line',
+            source: INSERT_SOURCE,
+            layout: { 'line-cap': 'round', 'line-join': 'round' },
+            paint: { 'line-color': '#F9AB00', 'line-width': 9, 'line-opacity': 0.9 },
+          });
+
+          const clearInsertHint = () => {
+            (map.getSource(INSERT_SOURCE) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
+            insertMarkerRef.current?.remove();
+          };
+
+          map.on('mousemove', ROUTES_LAYER, (e) => {
+            map.getCanvas().style.cursor = 'pointer';
+            const id = e.features?.[0]?.id;
+            if (typeof id !== 'number') return;
+
+            // Grey alternatives: hover highlight.
+            if (hoveredAltRef.current !== null && hoveredAltRef.current !== id) {
+              map.setFeatureState(
+                { source: ROUTES_SOURCE, id: hoveredAltRef.current },
+                { hover: false },
+              );
+            }
+            hoveredAltRef.current = id;
+            map.setFeatureState({ source: ROUTES_SOURCE, id }, { hover: true });
+
+            // Selected route: highlight the hovered leg + show a "+" handle to insert a via-stop.
+            const store = useAppStore.getState();
+            if (id !== store.selectedRouteIndex || !store.route) {
+              clearInsertHint();
+              return;
+            }
+            const seg = segmentForHover(store.route.points, store.waypoints, e.lngLat);
+            if (!seg) {
+              clearInsertHint();
+              return;
+            }
+            const legCoords = store.route.points
+              .slice(seg.segStart, seg.segEnd + 1)
+              .map((p) => [p.lng, p.lat] as [number, number]);
+            (map.getSource(INSERT_SOURCE) as GeoJSONSource | undefined)?.setData({
+              type: 'FeatureCollection',
+              features: [
+                {
+                  type: 'Feature',
+                  properties: {},
+                  geometry: { type: 'LineString', coordinates: legCoords },
+                },
+              ],
+            });
+            if (!insertMarkerRef.current && mapboxRef.current) {
+              const handle = buildInsertHandle();
+              handle.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                const ll = insertMarkerRef.current?.getLngLat();
+                if (ll) insertStopAt(ll.lng, ll.lat);
+              });
+              insertMarkerRef.current = new mapboxRef.current.Marker({ element: handle });
+            }
+            insertMarkerRef.current?.setLngLat([e.lngLat.lng, e.lngLat.lat]).addTo(map);
+          });
+          map.on('mouseleave', ROUTES_LAYER, () => {
+            map.getCanvas().style.cursor = '';
+            clearInsertHint();
+            if (hoveredAltRef.current !== null) {
+              map.setFeatureState(
+                { source: ROUTES_SOURCE, id: hoveredAltRef.current },
+                { hover: false },
+              );
+              hoveredAltRef.current = null;
+            }
+          });
         });
+
         // Double-click adds a stop (single click is reserved for selecting an alternative), so
         // disable the default double-click-to-zoom.
         map.doubleClickZoom.disable();
@@ -247,8 +353,11 @@ export function MapCanvas() {
           const hit = map.queryRenderedFeatures(e.point, { layers: [ROUTES_LAYER] })[0];
           if (!hit || typeof hit.id !== 'number') return;
           // Click the SELECTED route → insert a via-stop there; click an alternative → select it.
-          if (hit.properties?.selected) insertStopAt(e.lngLat.lng, e.lngLat.lat);
-          else useAppStore.getState().selectRoute(hit.id);
+          if (hit.id === useAppStore.getState().selectedRouteIndex) {
+            insertStopAt(e.lngLat.lng, e.lngLat.lat);
+          } else {
+            useAppStore.getState().selectRoute(hit.id);
+          }
         });
         map.on('dblclick', (e) => addStopAt(e.lngLat.lng, e.lngLat.lat));
         map.on('moveend', () => {
@@ -361,11 +470,15 @@ export function MapCanvas() {
   }, [trailsOverlay]);
 
   // --- all route options in one layer (selected = blue on top, others = grey) ---
+  // The source + layer + hover/insert handlers are created ONCE at map load; this effect only
+  // pushes fresh feature data so selecting an alternative is a repaint (the route can never vanish).
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const draw = () => {
+      const src = map.getSource(ROUTES_SOURCE) as GeoJSONSource | undefined;
+      if (!src) return;
       // Every option is one feature (id = its index). `selected` drives the data-driven paint and
       // draw order, so selecting simply re-paints — the selected route can never vanish.
       const features = alternatives
@@ -380,120 +493,10 @@ export function MapCanvas() {
             coordinates: r.points.map((p) => [p.lng, p.lat] as [number, number]),
           },
         }));
-      const data = { type: 'FeatureCollection' as const, features };
-      const existing = map.getSource(ROUTES_SOURCE) as GeoJSONSource | undefined;
-      if (existing) {
-        existing.setData(data);
-        return;
-      }
-      if (features.length === 0) return;
-      map.addSource(ROUTES_SOURCE, { type: 'geojson', data });
-      map.addLayer({
-        id: ROUTES_LAYER,
-        type: 'line',
-        source: ROUTES_SOURCE,
-        layout: {
-          'line-cap': 'round',
-          'line-join': 'round',
-          'line-sort-key': ['case', ['get', 'selected'], 1, 0], // selected drawn last (on top)
-        },
-        paint: {
-          'line-color': ['case', ['get', 'selected'], '#1A73E8', '#5F6368'],
-          'line-width': [
-            'case',
-            ['get', 'selected'],
-            6,
-            ['case', ['boolean', ['feature-state', 'hover'], false], 6, 4],
-          ],
-          'line-opacity': [
-            'case',
-            ['get', 'selected'],
-            1,
-            ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.65],
-          ],
-        },
-      });
-
-      // Insert-hint: highlighted leg + a draggable "+" handle, drawn above the routes.
-      map.addSource(INSERT_SOURCE, { type: 'geojson', data: EMPTY_FC });
-      map.addLayer({
-        id: INSERT_LAYER,
-        type: 'line',
-        source: INSERT_SOURCE,
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': '#F9AB00', 'line-width': 9, 'line-opacity': 0.9 },
-      });
-
-      const clearInsertHint = () => {
-        (map.getSource(INSERT_SOURCE) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
-        insertMarkerRef.current?.remove();
-      };
-
-      map.on('mousemove', ROUTES_LAYER, (e) => {
-        map.getCanvas().style.cursor = 'pointer';
-        const feature = e.features?.[0];
-        const id = feature?.id;
-        if (typeof id !== 'number') return;
-
-        // Grey alternatives: hover highlight.
-        if (hoveredAltRef.current !== null && hoveredAltRef.current !== id) {
-          map.setFeatureState(
-            { source: ROUTES_SOURCE, id: hoveredAltRef.current },
-            { hover: false },
-          );
-        }
-        hoveredAltRef.current = id;
-        map.setFeatureState({ source: ROUTES_SOURCE, id }, { hover: true });
-
-        // Selected route: show the leg being hovered + a "+" handle to insert a stop into it.
-        if (!feature?.properties?.selected) {
-          clearInsertHint();
-          return;
-        }
-        const store = useAppStore.getState();
-        const seg = store.route
-          ? segmentForHover(store.route.points, store.waypoints, e.lngLat)
-          : null;
-        if (seg && store.route) {
-          const legCoords = store.route.points
-            .slice(seg.segStart, seg.segEnd + 1)
-            .map((p) => [p.lng, p.lat] as [number, number]);
-          (map.getSource(INSERT_SOURCE) as GeoJSONSource | undefined)?.setData({
-            type: 'FeatureCollection',
-            features: [
-              {
-                type: 'Feature',
-                properties: {},
-                geometry: { type: 'LineString', coordinates: legCoords },
-              },
-            ],
-          });
-          if (!insertMarkerRef.current && mapboxRef.current) {
-            const handle = buildInsertHandle();
-            handle.addEventListener('click', (ev) => {
-              ev.stopPropagation();
-              const ll = insertMarkerRef.current?.getLngLat();
-              if (ll) insertStopAt(ll.lng, ll.lat);
-            });
-            insertMarkerRef.current = new mapboxRef.current.Marker({ element: handle });
-          }
-          insertMarkerRef.current?.setLngLat([e.lngLat.lng, e.lngLat.lat]).addTo(map);
-        }
-      });
-      map.on('mouseleave', ROUTES_LAYER, () => {
-        map.getCanvas().style.cursor = '';
-        clearInsertHint();
-        if (hoveredAltRef.current !== null) {
-          map.setFeatureState(
-            { source: ROUTES_SOURCE, id: hoveredAltRef.current },
-            { hover: false },
-          );
-          hoveredAltRef.current = null;
-        }
-      });
+      src.setData({ type: 'FeatureCollection', features });
     };
 
-    if (map.isStyleLoaded()) draw();
+    if (map.getSource(ROUTES_SOURCE)) draw();
     else map.once('load', draw);
   }, [alternatives, selectedRouteIndex]);
 

@@ -237,18 +237,30 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   openRoute: (id) => {
-    const saved = get().savedRoutes.find((r) => r.id === id);
+    const state = get();
+    const saved = state.savedRoutes.find((r) => r.id === id);
     if (!saved) return;
+    const alternatives =
+      saved.alternatives && saved.alternatives.length > 0
+        ? saved.alternatives
+        : saved.route
+          ? [saved.route]
+          : [];
+    const selectedRouteIndex =
+      saved.selectedRouteIndex != null && saved.selectedRouteIndex < alternatives.length
+        ? saved.selectedRouteIndex
+        : 0;
     set({
       waypoints: saved.waypoints,
-      route: saved.route ?? null,
-      alternatives: saved.route ? [saved.route] : [],
-      selectedRouteIndex: 0,
+      route: alternatives[selectedRouteIndex] ?? saved.route ?? null,
+      alternatives,
+      selectedRouteIndex,
       routeError: null,
       hoverIndex: null,
       slicePlan: null,
       forcedStopIds: [],
       currentRouteId: id,
+      mapFocusNonce: state.mapFocusNonce + 1, // re-frame the map to the loaded route
     });
   },
 
@@ -277,6 +289,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       name: existing?.name ?? defaultRouteName(state.waypoints),
       waypoints: state.waypoints,
       route: state.route,
+      alternatives: state.alternatives,
+      selectedRouteIndex: state.selectedRouteIndex,
       now: Date.now(),
     });
     const savedRoutes = existing

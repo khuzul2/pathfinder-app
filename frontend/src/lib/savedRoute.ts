@@ -14,6 +14,9 @@ export interface SavedRoute {
   updatedAt: number;
   /** Last analyzed route (cached for map preview + GPX export); null until one is computed. */
   route?: RouteAnalysis | null;
+  /** Cached route options (recommended + alternatives) so they reappear when the route is reopened. */
+  alternatives?: RouteAnalysis[];
+  selectedRouteIndex?: number;
 }
 
 const WaypointSchema = z.object({
@@ -27,8 +30,10 @@ const SavedRouteSchema = z.object({
   name: z.string(),
   waypoints: z.array(WaypointSchema),
   updatedAt: z.number(),
-  // Our own analysis type — kept opaque here; a stale/missing cache degrades to "open to recompute".
+  // Our own analysis types — kept opaque here; a stale/missing cache degrades to "open to recompute".
   route: z.unknown().optional(),
+  alternatives: z.unknown().optional(),
+  selectedRouteIndex: z.number().optional(),
 });
 
 /** Build a normalized SavedRoute from the current working state. */
@@ -38,6 +43,8 @@ export function makeSavedRoute(opts: {
   waypoints: readonly Waypoint[];
   now: number;
   route?: RouteAnalysis | null;
+  alternatives?: readonly RouteAnalysis[];
+  selectedRouteIndex?: number;
 }): SavedRoute {
   return {
     id: opts.id,
@@ -49,6 +56,8 @@ export function makeSavedRoute(opts: {
     })),
     updatedAt: opts.now,
     route: opts.route ?? null,
+    alternatives: opts.alternatives ? [...opts.alternatives] : opts.route ? [opts.route] : [],
+    selectedRouteIndex: opts.selectedRouteIndex ?? 0,
   };
 }
 

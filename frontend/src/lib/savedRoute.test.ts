@@ -48,6 +48,8 @@ describe('makeSavedRoute', () => {
       ],
       updatedAt: 1000,
       route: null,
+      alternatives: [],
+      selectedRouteIndex: 0,
     });
   });
 });
