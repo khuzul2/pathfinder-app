@@ -12,9 +12,9 @@ describe('orsProfile', () => {
 });
 
 describe('DEFAULT_ROUTING_OPTIONS', () => {
-  it('avoids roads by default and offers hut/camp stays', () => {
+  it('avoids roads, auto-plans overnights, and offers hut/camp stays by default', () => {
     expect(DEFAULT_ROUTING_OPTIONS.avoidRoads).toBe(true);
-    expect(DEFAULT_ROUTING_OPTIONS.autoOvernight).toBe(false);
+    expect(DEFAULT_ROUTING_OPTIONS.autoOvernight).toBe(true);
     expect(DEFAULT_ROUTING_OPTIONS.stayTypes).toEqual({ hut: true, camp: true, bivvy: false });
   });
 });

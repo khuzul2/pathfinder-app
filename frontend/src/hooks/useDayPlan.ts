@@ -13,6 +13,7 @@ export function useDayPlan() {
   const pois = useAppStore((s) => s.pois);
   const targetHours = useAppStore((s) => s.targetHours);
   const forcedStopIds = useAppStore((s) => s.forcedStopIds);
+  const routingOptions = useAppStore((s) => s.routingOptions);
   const setSlicePlan = useAppStore((s) => s.setSlicePlan);
 
   useEffect(() => {
@@ -20,10 +21,25 @@ export function useDayPlan() {
       setSlicePlan(null);
       return;
     }
-    let shelters: Shelter[] = sheltersFrom(pois);
+    const { autoOvernight, stayTypes } = routingOptions;
+    // Auto overnight off → treat the whole route as a single push (no cap → one leg).
+    if (!autoOvernight) {
+      setSlicePlan(planDays(route.points, [], { capSeconds: Number.POSITIVE_INFINITY }));
+      return;
+    }
+    // Only the enabled shelter types are candidates; bivvy allows a wild camp anywhere.
+    let shelters: Shelter[] = sheltersFrom(pois).filter(
+      (s) =>
+        (s.kind === 'alpine_hut' && stayTypes.hut) || (s.kind === 'camp_site' && stayTypes.camp),
+    );
     if (forcedStopIds.length > 0) {
       shelters = shelters.filter((s) => forcedStopIds.includes(s.id));
     }
-    setSlicePlan(planDays(route.points, shelters, { targetSeconds: targetHours * 3600 }));
-  }, [route, pois, targetHours, forcedStopIds, setSlicePlan]);
+    setSlicePlan(
+      planDays(route.points, shelters, {
+        targetSeconds: targetHours * 3600,
+        allowBivvy: stayTypes.bivvy,
+      }),
+    );
+  }, [route, pois, targetHours, forcedStopIds, routingOptions, setSlicePlan]);
 }

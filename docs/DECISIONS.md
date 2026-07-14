@@ -173,3 +173,16 @@ recall on login. That overturns the single-user assumption and needs a DB + OAut
    shape, so P9a's UI/store are unchanged. Requires the owner to create the Supabase project +
    Google OAuth credentials (hands-on, like the Mapbox/ORS keys). **Consequences:** immediate
    local value; a small, well-isolated swap to per-user cloud sync; ADR-004 retired.
+
+## ADR-015 — Routing options: profile-based road avoidance + bivvy-anywhere overnights
+**Status:** Accepted (2026-07-14). **Context:** users wanted to (a) avoid vehicle-traffic roads
+and (b) auto-place overnight stays including wild camps. ORS has no per-request "avoid roads"
+for foot profiles. **Decisions:** (1) **Avoid roads = profile choice** — `foot-hiking` (prefers
+trails/paths) vs `foot-walking` (direct, road-tolerant), threaded end-to-end as a validated enum
+(SSRF-safe URL on the backend). (2) **Overnight stays** reuse the time-based day slicer (ADR-002):
+the stay-type multi-select filters candidate shelters (hut/campsite), and **bivvy** adds every
+interior vertex as a candidate day-boundary with a squared-error penalty (~20% of ideal), so the
+DP prefers a real shelter when one is close and drops a wild camp at the ideal spacing otherwise.
+`autoOvernight` gates it (off → single push). **Consequences:** a real, testable behavior change
+for road avoidance; multi-day plans now always exist when wanted (bivvy guarantees a legal split).
+The overnight-stop map markers (bivvy pins) are a small follow-up.

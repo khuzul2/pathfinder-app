@@ -18,7 +18,7 @@ export interface RoutingOptions {
 
 export const DEFAULT_ROUTING_OPTIONS: RoutingOptions = {
   avoidRoads: true,
-  autoOvernight: false,
+  autoOvernight: true,
   stayTypes: { hut: true, camp: true, bivvy: false },
 };
 

@@ -18,4 +18,22 @@ describe('RoutingOptions', () => {
     expect(useAppStore.getState().routingOptions.avoidRoads).toBe(false);
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
+
+  it('shows stay-type chips only while auto overnight is on', async () => {
+    render(<RoutingOptions />);
+    // auto overnight defaults on → chips visible
+    expect(screen.getByRole('button', { name: /^bivvy$/i })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: /auto overnight stays/i }));
+    expect(useAppStore.getState().routingOptions.autoOvernight).toBe(false);
+    expect(screen.queryByRole('button', { name: /^bivvy$/i })).not.toBeInTheDocument();
+  });
+
+  it('multi-selects overnight stay types', async () => {
+    render(<RoutingOptions />);
+    expect(useAppStore.getState().routingOptions.stayTypes.bivvy).toBe(false);
+    await userEvent.click(screen.getByRole('button', { name: /^bivvy$/i }));
+    expect(useAppStore.getState().routingOptions.stayTypes.bivvy).toBe(true);
+    await userEvent.click(screen.getByRole('button', { name: /^huts$/i }));
+    expect(useAppStore.getState().routingOptions.stayTypes.hut).toBe(false);
+  });
 });

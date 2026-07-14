@@ -35,6 +35,14 @@ export interface SliceOptions {
   targetSeconds?: number;
   capSeconds?: number;
   bufferMeters?: number;
+  /** Allow ending a day anywhere on the route (a wild camp) when no shelter sits near the ideal. */
+  allowBivvy?: boolean;
+}
+
+/** A synthetic "wild camp" stop at a route vertex (used when bivvying is allowed). */
+function bivvyAt(points: readonly RoutePoint[], index: number): Shelter {
+  const p = points[index] as RoutePoint;
+  return { id: `bivvy-${index}`, name: 'Wild camp', kind: 'bivvy', lng: p.lng, lat: p.lat };
 }
 
 /**
@@ -111,11 +119,23 @@ export function planDays(
     return { days: [makeDay(0, 0, lastIndex, points, null)], warnings: [] };
   }
 
+  const allowBivvy = options.allowBivvy ?? false;
   const candidates = matchSheltersToRoute(points, shelters, buffer);
   const shelterByIndex = new Map(candidates.map((c) => [c.pointIndex, c.shelter]));
-  const boundaries = [...new Set([0, ...candidates.map((c) => c.pointIndex), lastIndex])].sort(
-    (a, b) => a - b,
-  );
+
+  // Candidate day-boundaries: shelters only, or (when bivvying) every interior vertex so a
+  // wild camp can fall at the ideal spacing wherever no shelter is near.
+  const boundarySet = new Set<number>([0, lastIndex]);
+  if (allowBivvy) {
+    for (let i = 1; i < lastIndex; i++) boundarySet.add(i);
+  } else {
+    for (const c of candidates) boundarySet.add(c.pointIndex);
+  }
+  const boundaries = [...boundarySet].sort((a, b) => a - b);
+
+  // A small penalty for a bivvy overnight biases the DP toward a real shelter within ~20% of
+  // the ideal day length, falling back to a wild camp only when none is close.
+  const bivvyPenalty = (target * 0.2) ** 2;
 
   const n = boundaries.length;
   const dp: number[] = new Array<number>(n).fill(Infinity);
@@ -123,12 +143,15 @@ export function planDays(
   dp[0] = 0;
 
   for (let j = 1; j < n; j++) {
+    const bj = boundaries[j] as number;
+    const isBivvyOvernight = bj !== lastIndex && !shelterByIndex.has(bj);
     for (let i = 0; i < j; i++) {
       const from = points[boundaries[i] as number] as RoutePoint;
-      const to = points[boundaries[j] as number] as RoutePoint;
+      const to = points[bj] as RoutePoint;
       const dayTime = to.timeSeconds - from.timeSeconds;
       if (dayTime > cap) continue;
-      const cost = (dp[i] as number) + (dayTime - target) ** 2;
+      const cost =
+        (dp[i] as number) + (dayTime - target) ** 2 + (isBivvyOvernight ? bivvyPenalty : 0);
       if (cost < (dp[j] as number)) {
         dp[j] = cost;
         prev[j] = i;
@@ -156,7 +179,10 @@ export function planDays(
   for (let d = 0; d < chosen.length - 1; d++) {
     const start = chosen[d] as number;
     const end = chosen[d + 1] as number;
-    const shelter = end === lastIndex ? null : (shelterByIndex.get(end) ?? null);
+    const shelter =
+      end === lastIndex
+        ? null
+        : (shelterByIndex.get(end) ?? (allowBivvy ? bivvyAt(points, end) : null));
     days.push(makeDay(d, start, end, points, shelter));
   }
   return { days, warnings: [] };

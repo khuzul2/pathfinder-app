@@ -52,8 +52,8 @@ describe('DaySlicer', () => {
     render(<DaySlicer />);
     expect(screen.getByText('Day 1')).toBeInTheDocument();
     expect(screen.getByText('Day 2')).toBeInTheDocument();
-    expect(screen.getByText('Pfeishütte')).toBeInTheDocument();
-    expect(screen.getByText('Finish')).toBeInTheDocument();
+    expect(screen.getByText(/Pfeishütte/)).toBeInTheDocument();
+    expect(screen.getByText(/Finish/)).toBeInTheDocument();
   });
 
   it('changes the target hours via the control', async () => {

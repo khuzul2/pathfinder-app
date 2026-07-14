@@ -3,6 +3,12 @@ import { formatDistance, formatDuration } from '../lib/route';
 
 const HOURS_CHOICES = [4, 5, 6, 7, 8];
 
+const STAY_ICON: Record<string, string> = {
+  alpine_hut: '🏠',
+  camp_site: '⛺',
+  bivvy: '🌙',
+};
+
 /** Target hours/day control + the resulting day-by-day breakdown. Hidden until a route exists. */
 export function DaySlicer() {
   const route = useAppStore((s) => s.route);
@@ -55,7 +61,9 @@ export function DaySlicer() {
                 {formatDuration(d.movingSeconds)} · {formatDistance(d.distanceMeters)}
               </span>
               <span className="truncate text-right opacity-70">
-                {d.shelterAtEnd ? (d.shelterAtEnd.name ?? 'Shelter') : 'Finish'}
+                {d.shelterAtEnd
+                  ? `${STAY_ICON[d.shelterAtEnd.kind] ?? '🏠'} ${d.shelterAtEnd.name ?? 'Shelter'}`
+                  : '🏁 Finish'}
               </span>
             </li>
           ))}

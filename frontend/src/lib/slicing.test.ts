@@ -85,4 +85,44 @@ describe('planDays', () => {
     expect(plan.days).toHaveLength(2);
     expect(plan.days[0]!.endIndex).toBe(4);
   });
+
+  describe('bivvy (wild camp anywhere)', () => {
+    it('splits a shelterless over-cap route into wild-camp days at the ideal spacing', () => {
+      const route = makeRoute([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]); // 10 h
+      const plan = planDays(route, [], {
+        targetSeconds: 5 * H,
+        capSeconds: 8 * H,
+        allowBivvy: true,
+      });
+      expect(plan.warnings).toEqual([]);
+      expect(plan.days).toHaveLength(2);
+      expect(plan.days[0]!.endIndex).toBe(5); // ideal 5 h
+      expect(plan.days[0]!.shelterAtEnd?.kind).toBe('bivvy');
+      expect(plan.days[0]!.shelterAtEnd?.name).toBe('Wild camp');
+      expect(plan.days[1]!.shelterAtEnd).toBeNull();
+    });
+
+    it('prefers a real shelter near the ideal over a wild camp', () => {
+      const route = makeRoute([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]); // 10 h
+      const plan = planDays(route, [shelterAt(5, 'hut5')], {
+        targetSeconds: 5 * H,
+        capSeconds: 8 * H,
+        allowBivvy: true,
+      });
+      expect(plan.days[0]!.endIndex).toBe(5);
+      expect(plan.days[0]!.shelterAtEnd?.kind).toBe('alpine_hut');
+    });
+
+    it('bivvies at the ideal when the only shelter is far off-target', () => {
+      const route = makeRoute([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]); // 10 h
+      // A hut at 8 h is well past the 5 h ideal → a wild camp near 5 h wins.
+      const plan = planDays(route, [shelterAt(8, 'hut8')], {
+        targetSeconds: 5 * H,
+        capSeconds: 8 * H,
+        allowBivvy: true,
+      });
+      expect(plan.days[0]!.endIndex).toBe(5);
+      expect(plan.days[0]!.shelterAtEnd?.kind).toBe('bivvy');
+    });
+  });
 });

@@ -132,8 +132,11 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
 - [x] **P8-2a** Routing option — **prefer trails / avoid roads**: `lib/routingOptions.ts`
       (`orsProfile`: foot-hiking ↔ foot-walking) threaded through the data layer + backend
       (validated profile enum, SSRF-safe URL) + `RoutingOptions` toggle. Store `routingOptions`.
-- [ ] **P8-2b** Routing option — **auto-add overnight stays** (multi-select huts/campsites/bivvy;
-      bivvy = anywhere at ideal spacing), integrated with the day slicer.
+- [x] **P8-2b** Routing option — **auto-add overnight stays**: `planDays` gains `allowBivvy`
+      (break at any vertex, DP penalty prefers a real shelter within ~20% of ideal, else a wild
+      camp); `useDayPlan` filters candidate shelters by the multi-select stay types (huts /
+      campsites / bivvy) and gates on `autoOvernight`. Controls in `RoutingOptions`; day list
+      shows stay-type icons.
 - [ ] **P8-3** Alternative routes (ORS `alternative_routes` for 2 stops + themed: overnight-via,
       scenic-by-surface); pick from cards, non-selected drawn faded on the map.
 
