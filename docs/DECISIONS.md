@@ -154,3 +154,22 @@ The `Waypoint` model gains an optional `name`, so searched places and map clicks
 ordered stop list (`WaypointList`: start/via/end roles, reorder, reverse). **Consequences:** a
 second Mapbox API surface (geocoding attribution added); a bad/absent token degrades to no
 suggestions, never a crash. ORS remains the single source of truth for routing + elevation.
+
+## ADR-014 — Multi-user saved routes: local autosave now, Supabase + Google OAuth next
+**Status:** Accepted (2026-07-14), **supersedes ADR-004** (single-user, no auth/DB). **Context:**
+the owner asked for a "My routes / New route" manager where each user's routes autosave and
+recall on login. That overturns the single-user assumption and needs a DB + OAuth. **Decisions:**
+1. **Ship the manager on local autosave first (P9a).** `lib/savedRoute.ts` (pure: model +
+   serialize/deserialize, coverage-gated) + `services/routeStorage.ts` behind a `RouteStorage`
+   interface (`localRouteStorage` today). Store gains `savedRoutes`/`currentRouteId` +
+   new/open/rename/delete/persistCurrent; `useRouteAutosave` (800 ms debounce) upserts the
+   working route; `RoutesPanel` lists them (open · rename · delete · download GPX). Works on the
+   static demo with zero setup — the "easiest yet scalable" first rung.
+2. **Cloud multi-user via Supabase (P9b).** Easiest scalable fit: Postgres + built-in Google
+   OAuth + Row-Level Security, all reachable from the static frontend with a public **anon key**
+   (security is enforced by RLS/JWT, not key secrecy — so, like the Mapbox `pk.` token, the anon
+   key is an allowed client credential; this extends CLAUDE.md invariant 1, and `secret-scan`
+   still blocks true server keys). `supabaseRouteStorage` will implement the same `RouteStorage`
+   shape, so P9a's UI/store are unchanged. Requires the owner to create the Supabase project +
+   Google OAuth credentials (hands-on, like the Mapbox/ORS keys). **Consequences:** immediate
+   local value; a small, well-isolated swap to per-user cloud sync; ADR-004 retired.

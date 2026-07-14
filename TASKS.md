@@ -136,6 +136,18 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
 
 ---
 
+## Phase 9 — Saved routes & accounts (supersedes ADR-004; see ADR-014)
+
+- [x] **P9a** Routes manager, **local autosave**: `lib/savedRoute.ts` + `services/routeStorage.ts`
+      (`RouteStorage` seam) + store (`savedRoutes`/`currentRouteId`, new/open/rename/delete/
+      persistCurrent) + `useRouteAutosave` (debounced) + `RoutesPanel` (New route · My routes:
+      open · rename · delete · download GPX). Works on the static demo, no setup.
+- [ ] **P9b** Google login + **Supabase** cloud sync: `supabaseRouteStorage` (same seam) +
+      auth UI + per-user Row-Level Security. Needs the owner to create the Supabase project +
+      Google OAuth credentials (hands-on, like the Mapbox/ORS keys).
+
+---
+
 ## Human-confirmation items — RESOLVED (see ADR-009 / ADR-008a)
 - [x] **HC-1..HC-4** Calibration constants accepted as sensible defaults (ADR-009); the
       values in `constants.ts` are authoritative. Optional P3 follow-up: calibrate against

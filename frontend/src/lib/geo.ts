@@ -15,6 +15,11 @@ export interface LngLat {
   lat: number;
 }
 
+/** A route stop: a point plus an optional human label (a searched place, or blank for a map pin). */
+export interface Waypoint extends LngLat {
+  name?: string;
+}
+
 export function toRadians(degrees: number): number {
   return (degrees * Math.PI) / 180;
 }

@@ -1,16 +1,15 @@
 import { create } from 'zustand';
 import type { RadarFrame } from '../lib/radar';
 import type { ThemePref } from '../lib/theme';
-import type { LngLat } from '../lib/geo';
+import type { Waypoint } from '../lib/geo';
 import type { RouteAnalysis } from '../lib/route';
 import type { Poi, Bbox, PoiKind } from '../lib/poiApi';
 import type { SlicePlan } from '../lib/slicing';
 import { SLICING } from '../lib/constants';
+import { makeSavedRoute, defaultRouteName, type SavedRoute } from '../lib/savedRoute';
+import { localRouteStorage } from '../services/routeStorage';
 
-/** A route stop: a point plus an optional human label (a searched place, or blank for a map pin). */
-export interface Waypoint extends LngLat {
-  name?: string;
-}
+export type { Waypoint };
 
 /**
  * Global UI state (Zustand). Shared, hover-syncable, and cheaply testable.
@@ -70,9 +69,21 @@ export interface AppState {
 
   slicePlan: SlicePlan | null;
   setSlicePlan: (plan: SlicePlan | null) => void;
+
+  // Saved routes (Phase 9) — the working route autosaves into this list (localStorage today,
+  // a per-user cloud DB once auth lands).
+  savedRoutes: SavedRoute[];
+  currentRouteId: string | null;
+  hydrateRoutes: () => void;
+  newRoute: () => void;
+  openRoute: (id: string) => void;
+  renameRoute: (id: string, name: string) => void;
+  deleteRoute: (id: string) => void;
+  /** Upsert the current working route (waypoints + last analysis) into the saved list. */
+  persistCurrent: () => void;
 }
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppState>((set, get) => ({
   themePref: 'system',
   setThemePref: (pref) => set({ themePref: pref }),
 
@@ -158,4 +169,68 @@ export const useAppStore = create<AppState>((set) => ({
 
   slicePlan: null,
   setSlicePlan: (slicePlan) => set({ slicePlan }),
+
+  savedRoutes: [],
+  currentRouteId: null,
+
+  hydrateRoutes: () => set({ savedRoutes: localRouteStorage.load() }),
+
+  newRoute: () =>
+    set({
+      waypoints: [],
+      route: null,
+      routeError: null,
+      hoverIndex: null,
+      slicePlan: null,
+      forcedStopIds: [],
+      currentRouteId: null,
+    }),
+
+  openRoute: (id) => {
+    const saved = get().savedRoutes.find((r) => r.id === id);
+    if (!saved) return;
+    set({
+      waypoints: saved.waypoints,
+      route: saved.route ?? null,
+      routeError: null,
+      hoverIndex: null,
+      slicePlan: null,
+      forcedStopIds: [],
+      currentRouteId: id,
+    });
+  },
+
+  renameRoute: (id, name) => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const savedRoutes = get().savedRoutes.map((r) => (r.id === id ? { ...r, name: trimmed } : r));
+    set({ savedRoutes });
+    localRouteStorage.save(savedRoutes);
+  },
+
+  deleteRoute: (id) => {
+    const savedRoutes = get().savedRoutes.filter((r) => r.id !== id);
+    set({ savedRoutes });
+    localRouteStorage.save(savedRoutes);
+    if (get().currentRouteId === id) get().newRoute();
+  },
+
+  persistCurrent: () => {
+    const state = get();
+    if (state.waypoints.length === 0) return;
+    const id = state.currentRouteId ?? crypto.randomUUID();
+    const existing = state.savedRoutes.find((r) => r.id === id);
+    const saved = makeSavedRoute({
+      id,
+      name: existing?.name ?? defaultRouteName(state.waypoints),
+      waypoints: state.waypoints,
+      route: state.route,
+      now: Date.now(),
+    });
+    const savedRoutes = existing
+      ? state.savedRoutes.map((r) => (r.id === id ? saved : r))
+      : [saved, ...state.savedRoutes];
+    set({ savedRoutes, currentRouteId: id });
+    localRouteStorage.save(savedRoutes);
+  },
 }));

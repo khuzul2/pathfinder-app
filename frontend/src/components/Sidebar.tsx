@@ -1,3 +1,4 @@
+import { RoutesPanel } from './RoutesPanel';
 import { SearchBox } from './SearchBox';
 import { WaypointList } from './WaypointList';
 import { ElevationCard } from './ElevationCard';
@@ -19,6 +20,10 @@ export function Sidebar() {
         <h1 className="font-heading text-xl font-medium">Pathfinder</h1>
         <p className="text-xs opacity-60">Topographic hiking planner</p>
       </header>
+
+      <RoutesPanel />
+
+      <div className="border-t border-neutral-200 dark:border-neutral-700" />
 
       <section aria-label="Route builder" className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">Plan a route</h2>
