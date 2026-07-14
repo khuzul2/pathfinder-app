@@ -110,6 +110,7 @@ export function MapCanvas() {
   const route = useAppStore((s) => s.route);
   const alternatives = useAppStore((s) => s.alternatives);
   const selectedRouteIndex = useAppStore((s) => s.selectedRouteIndex);
+  const mapFocusNonce = useAppStore((s) => s.mapFocusNonce);
   const pois = useAppStore((s) => s.pois);
   const poiFilters = useAppStore((s) => s.poiFilters);
   const forcedStopIds = useAppStore((s) => s.forcedStopIds);
@@ -202,6 +203,28 @@ export function MapCanvas() {
       markersRef.current = [];
     };
   }, [waypoints]);
+
+  // --- re-frame the map to the current stops (center one, fit-bounds many) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || mapFocusNonce === 0) return;
+    const stops = useAppStore.getState().waypoints;
+    if (stops.length === 0) return;
+    if (stops.length === 1) {
+      const only = stops[0]!;
+      map.flyTo({ center: [only.lng, only.lat], zoom: Math.max(map.getZoom(), 12), duration: 800 });
+      return;
+    }
+    const lngs = stops.map((s) => s.lng);
+    const lats = stops.map((s) => s.lat);
+    map.fitBounds(
+      [
+        [Math.min(...lngs), Math.min(...lats)],
+        [Math.max(...lngs), Math.max(...lats)],
+      ],
+      { padding: 80, maxZoom: 14, duration: 800 },
+    );
+  }, [mapFocusNonce]);
 
   // --- Waymarked Trails hiking overlay (toggleable) ---
   useEffect(() => {

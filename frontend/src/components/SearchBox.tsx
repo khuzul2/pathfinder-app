@@ -24,6 +24,7 @@ export function SearchBox() {
   const waypoints = useAppStore((s) => s.waypoints);
   const viewportBbox = useAppStore((s) => s.viewportBbox);
   const addWaypoint = useAppStore((s) => s.addWaypoint);
+  const requestMapFocus = useAppStore((s) => s.requestMapFocus);
 
   const { data: results = [], isFetching } = usePlaceSearch(
     debounced,
@@ -32,6 +33,8 @@ export function SearchBox() {
 
   const pick = (r: GeocodeResult) => {
     addWaypoint({ lng: r.lng, lat: r.lat, name: r.name });
+    // Re-frame the map: center the first stop, fit-bounds once there are several.
+    requestMapFocus();
     setQuery('');
     setOpen(false);
   };

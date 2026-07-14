@@ -41,5 +41,7 @@ describe('SearchBox', () => {
     expect(waypoints[0]!.name).toBe('Serso');
     expect(waypoints[0]!.lng).toBeCloseTo(11.45, 2);
     expect(waypoints[0]!.lat).toBeCloseTo(46.06, 2);
+    // Picking a result asks the map to re-frame.
+    expect(useAppStore.getState().mapFocusNonce).toBeGreaterThan(0);
   });
 });

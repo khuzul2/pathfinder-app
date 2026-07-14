@@ -39,6 +39,10 @@ export interface AppState {
   route: RouteAnalysis | null;
   setRoute: (route: RouteAnalysis | null) => void;
 
+  /** Bumped to ask the map to (re)frame the current stops (center one, fit-bounds many). */
+  mapFocusNonce: number;
+  requestMapFocus: () => void;
+
   /** Route options (recommended + alternatives, Phase 8); `route` mirrors the selected one. */
   alternatives: RouteAnalysis[];
   selectedRouteIndex: number;
@@ -153,6 +157,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   route: null,
   setRoute: (route) => set({ route }),
+
+  mapFocusNonce: 0,
+  requestMapFocus: () => set((state) => ({ mapFocusNonce: state.mapFocusNonce + 1 })),
 
   alternatives: [],
   selectedRouteIndex: 0,
