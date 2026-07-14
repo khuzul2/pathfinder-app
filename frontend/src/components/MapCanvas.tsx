@@ -27,10 +27,11 @@ interface MapboxApi {
 
 const RADAR_SOURCE = 'rainviewer-radar';
 const RADAR_LAYER = 'rainviewer-radar-layer';
-const ROUTE_SOURCE = 'route';
-const ROUTE_LAYER = 'route-line';
-const ALT_SOURCE = 'route-alternatives';
-const ALT_LAYER = 'route-alternatives-line';
+// One source holds every route option as a feature tagged `selected`; a single data-driven layer
+// paints the selected route blue-on-top and the rest grey. This can't "lose" the selection the
+// way two separate layers could get out of sync.
+const ROUTES_SOURCE = 'routes';
+const ROUTES_LAYER = 'routes-line';
 const TRAILS_SOURCE = 'waymarked-hiking';
 const TRAILS_LAYER = 'waymarked-hiking-layer';
 
@@ -64,6 +65,24 @@ function addStopAt(lng: number, lat: number): void {
   }
   const index = store.waypoints.length;
   store.addWaypoint({ lng, lat });
+  void reverseGeocode(lng, lat).then((name) => {
+    if (name) useAppStore.getState().updateWaypoint(index, { lng, lat, name });
+  });
+}
+
+/** Re-resolve a stop's name after it is moved (POI snap or reverse-geocode) at position `index`. */
+function nameStopAt(index: number, lng: number, lat: number): void {
+  const store = useAppStore.getState();
+  const poi = nearestPoi(store.pois, lng, lat, 100);
+  if (poi) {
+    store.updateWaypoint(index, {
+      lng: poi.lng,
+      lat: poi.lat,
+      name: poi.name ?? POI_META[poi.kind].label,
+    });
+    return;
+  }
+  store.updateWaypoint(index, { lng, lat }); // drop the now-stale name; show coords until resolved
   void reverseGeocode(lng, lat).then((name) => {
     if (name) useAppStore.getState().updateWaypoint(index, { lng, lat, name });
   });
@@ -182,8 +201,8 @@ export function MapCanvas() {
         // disable the default double-click-to-zoom.
         map.doubleClickZoom.disable();
         map.on('click', (e) => {
-          if (!map.getLayer(ALT_LAYER)) return;
-          const hit = map.queryRenderedFeatures(e.point, { layers: [ALT_LAYER] })[0];
+          if (!map.getLayer(ROUTES_LAYER)) return;
+          const hit = map.queryRenderedFeatures(e.point, { layers: [ROUTES_LAYER] })[0];
           if (hit && typeof hit.id === 'number') useAppStore.getState().selectRoute(hit.id);
         });
         map.on('dblclick', (e) => addStopAt(e.lngLat.lng, e.lngLat.lat));
@@ -224,8 +243,8 @@ export function MapCanvas() {
         .addTo(map);
       marker.on('dragend', () => {
         const { lng, lat } = marker.getLngLat();
-        // Keep the stop's label when its position is dragged; the route re-snaps to trails.
-        useAppStore.getState().updateWaypoint(index, { lng, lat, name: wp.name });
+        // Re-resolve the stop's name for its new position (the route re-snaps to trails too).
+        nameStopAt(index, lng, lat);
       });
       return marker;
     });
@@ -279,8 +298,8 @@ export function MapCanvas() {
           attribution: 'Trails © waymarkedtrails.org',
         });
       }
-      // Keep the snapped route drawn on top of the overlay when both are present.
-      const beforeId = map.getLayer(ROUTE_LAYER) ? ROUTE_LAYER : undefined;
+      // Keep the routes drawn on top of the overlay when both are present.
+      const beforeId = map.getLayer(ROUTES_LAYER) ? ROUTES_LAYER : undefined;
       map.addLayer(
         {
           id: TRAILS_LAYER,
@@ -296,65 +315,81 @@ export function MapCanvas() {
     else map.once('load', apply);
   }, [trailsOverlay]);
 
-  // --- non-selected alternative routes (faded, beneath the main line) ---
+  // --- all route options in one layer (selected = blue on top, others = grey) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const draw = () => {
-      // Each feature keeps its ORIGINAL alternative index (as the GeoJSON id) so a map click can
-      // select it; the currently-selected route is drawn by ROUTE_LAYER, not here.
+      // Every option is one feature (id = its index). `selected` drives the data-driven paint and
+      // draw order, so selecting simply re-paints — the selected route can never vanish.
       const features = alternatives
         .map((r, i) => ({ r, i }))
-        .filter(({ i }) => i !== selectedRouteIndex)
+        .filter(({ r }) => r.points.length >= 2)
         .map(({ r, i }) => ({
           type: 'Feature' as const,
           id: i,
-          properties: { index: i },
+          properties: { index: i, selected: i === selectedRouteIndex },
           geometry: {
             type: 'LineString' as const,
-            coordinates: r.points.map((p) => [p.lng, p.lat]),
+            coordinates: r.points.map((p) => [p.lng, p.lat] as [number, number]),
           },
         }));
       const data = { type: 'FeatureCollection' as const, features };
-      const existing = map.getSource(ALT_SOURCE) as GeoJSONSource | undefined;
+      const existing = map.getSource(ROUTES_SOURCE) as GeoJSONSource | undefined;
       if (existing) {
         existing.setData(data);
         return;
       }
       if (features.length === 0) return;
-      map.addSource(ALT_SOURCE, { type: 'geojson', data });
-      const beforeId = map.getLayer(ROUTE_LAYER) ? ROUTE_LAYER : undefined;
-      map.addLayer(
-        {
-          id: ALT_LAYER,
-          type: 'line',
-          source: ALT_SOURCE,
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: {
-            'line-color': '#5F6368',
-            'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 6, 5],
-            'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.7],
-          },
+      map.addSource(ROUTES_SOURCE, { type: 'geojson', data });
+      map.addLayer({
+        id: ROUTES_LAYER,
+        type: 'line',
+        source: ROUTES_SOURCE,
+        layout: {
+          'line-cap': 'round',
+          'line-join': 'round',
+          'line-sort-key': ['case', ['get', 'selected'], 1, 0], // selected drawn last (on top)
         },
-        beforeId,
-      );
+        paint: {
+          'line-color': ['case', ['get', 'selected'], '#1A73E8', '#5F6368'],
+          'line-width': [
+            'case',
+            ['get', 'selected'],
+            6,
+            ['case', ['boolean', ['feature-state', 'hover'], false], 6, 4],
+          ],
+          'line-opacity': [
+            'case',
+            ['get', 'selected'],
+            1,
+            ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.65],
+          ],
+        },
+      });
 
-      // Hover feedback + pointer cursor over an alternative (registered once with the layer).
-      map.on('mousemove', ALT_LAYER, (e) => {
+      // Hover feedback for the (grey) alternatives — pointer cursor + a width/opacity bump.
+      map.on('mousemove', ROUTES_LAYER, (e) => {
         map.getCanvas().style.cursor = 'pointer';
         const id = e.features?.[0]?.id;
         if (typeof id !== 'number') return;
         if (hoveredAltRef.current !== null && hoveredAltRef.current !== id) {
-          map.setFeatureState({ source: ALT_SOURCE, id: hoveredAltRef.current }, { hover: false });
+          map.setFeatureState(
+            { source: ROUTES_SOURCE, id: hoveredAltRef.current },
+            { hover: false },
+          );
         }
         hoveredAltRef.current = id;
-        map.setFeatureState({ source: ALT_SOURCE, id }, { hover: true });
+        map.setFeatureState({ source: ROUTES_SOURCE, id }, { hover: true });
       });
-      map.on('mouseleave', ALT_LAYER, () => {
+      map.on('mouseleave', ROUTES_LAYER, () => {
         map.getCanvas().style.cursor = '';
         if (hoveredAltRef.current !== null) {
-          map.setFeatureState({ source: ALT_SOURCE, id: hoveredAltRef.current }, { hover: false });
+          map.setFeatureState(
+            { source: ROUTES_SOURCE, id: hoveredAltRef.current },
+            { hover: false },
+          );
           hoveredAltRef.current = null;
         }
       });
@@ -363,51 +398,6 @@ export function MapCanvas() {
     if (map.isStyleLoaded()) draw();
     else map.once('load', draw);
   }, [alternatives, selectedRouteIndex]);
-
-  // --- selected route line (solid blue, from the full geometry) ---
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map) return;
-
-    const draw = () => {
-      // Drawn straight from route.points (robust — never depends on the difficulty-segment split,
-      // which could otherwise leave the line blank). Solid blue keeps the SELECTED route clearly
-      // visible over the green terrain and distinct from the grey alternatives; the SAC difficulty
-      // is conveyed by the sidebar legend.
-      const coords = (route?.points ?? []).map((p) => [p.lng, p.lat] as [number, number]);
-      const data = {
-        type: 'FeatureCollection' as const,
-        features:
-          coords.length >= 2
-            ? [
-                {
-                  type: 'Feature' as const,
-                  properties: {},
-                  geometry: { type: 'LineString' as const, coordinates: coords },
-                },
-              ]
-            : [],
-      };
-      const existing = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
-      if (existing) {
-        existing.setData(data);
-      } else if (coords.length >= 2) {
-        map.addSource(ROUTE_SOURCE, { type: 'geojson', data });
-        map.addLayer({
-          id: ROUTE_LAYER,
-          type: 'line',
-          source: ROUTE_SOURCE,
-          layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#1A73E8', 'line-width': 6 },
-        });
-      }
-      // Always keep the selected route above the grey alternative lines.
-      if (map.getLayer(ROUTE_LAYER)) map.moveLayer(ROUTE_LAYER);
-    };
-
-    if (map.isStyleLoaded()) draw();
-    else map.once('load', draw);
-  }, [route]);
 
   // --- radar overlay ---
   useEffect(() => {
