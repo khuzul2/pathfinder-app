@@ -28,13 +28,13 @@ describe('App shell', () => {
     expect(screen.getByText(/OpenStreetMap/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /rain radar/i })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument();
-    expect(screen.getByText(/click the map to drop points/i)).toBeInTheDocument();
+    expect(screen.getByText(/click the map to add stops/i)).toBeInTheDocument();
   });
 
-  it('reveals the waypoint list once points exist', () => {
+  it('reveals the stops list once points exist', () => {
     useAppStore.setState({ waypoints: [{ lng: 11, lat: 48 }] });
     renderApp();
-    expect(screen.getByText(/waypoints \(1\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/stops \(1\)/i)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /clear all/i })).toBeInTheDocument();
   });
 });

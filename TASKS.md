@@ -123,6 +123,19 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
 
 ---
 
+## Phase 8 — Search, routing options & alternatives
+
+- [x] **P8-1** Address/POI **search** (Mapbox Geocoding v6, ADR-013): `lib/geocode.ts` +
+      `contracts/mapbox.ts` + `services/geocodeClient.ts` + `usePlaceSearch` (debounced) +
+      `SearchBox`. `Waypoint` gains a `name`; `WaypointList` is now an ordered **stops** panel
+      (start/via/end roles, reorder ↑↓, reverse, delete); map markers colored by role.
+- [ ] **P8-2** Routing options: avoid vehicle-traffic roads (prioritize trails) + auto-add
+      overnight stays (multi-select huts/campsites/bivvy; bivvy = anywhere at ideal spacing).
+- [ ] **P8-3** Alternative routes (ORS `alternative_routes` for 2 stops + themed: overnight-via,
+      scenic-by-surface); pick from cards, non-selected drawn faded on the map.
+
+---
+
 ## Human-confirmation items — RESOLVED (see ADR-009 / ADR-008a)
 - [x] **HC-1..HC-4** Calibration constants accepted as sensible defaults (ADR-009); the
       values in `constants.ts` are authoritative. Optional P3 follow-up: calibrate against

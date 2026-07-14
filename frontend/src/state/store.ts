@@ -7,6 +7,11 @@ import type { Poi, Bbox, PoiKind } from '../lib/poiApi';
 import type { SlicePlan } from '../lib/slicing';
 import { SLICING } from '../lib/constants';
 
+/** A route stop: a point plus an optional human label (a searched place, or blank for a map pin). */
+export interface Waypoint extends LngLat {
+  name?: string;
+}
+
 /**
  * Global UI state (Zustand). Shared, hover-syncable, and cheaply testable.
  */
@@ -22,11 +27,13 @@ export interface AppState {
   activeFrameIndex: number;
   setRadar: (host: string, frames: RadarFrame[]) => void;
 
-  // Routing (Phase 3)
-  waypoints: LngLat[];
-  addWaypoint: (point: LngLat) => void;
-  updateWaypoint: (index: number, point: LngLat) => void;
+  // Routing (Phase 3, named stops Phase 8)
+  waypoints: Waypoint[];
+  addWaypoint: (point: Waypoint) => void;
+  updateWaypoint: (index: number, point: Waypoint) => void;
   removeWaypoint: (index: number) => void;
+  moveWaypoint: (from: number, to: number) => void;
+  reverseWaypoints: () => void;
   clearWaypoints: () => void;
 
   route: RouteAnalysis | null;
@@ -90,6 +97,22 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   removeWaypoint: (index) =>
     set((state) => ({ waypoints: state.waypoints.filter((_, i) => i !== index) })),
+  moveWaypoint: (from, to) =>
+    set((state) => {
+      if (
+        from === to ||
+        from < 0 ||
+        to < 0 ||
+        from >= state.waypoints.length ||
+        to >= state.waypoints.length
+      )
+        return {};
+      const next = [...state.waypoints];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved!);
+      return { waypoints: next };
+    }),
+  reverseWaypoints: () => set((state) => ({ waypoints: [...state.waypoints].reverse() })),
   clearWaypoints: () =>
     set({
       waypoints: [],

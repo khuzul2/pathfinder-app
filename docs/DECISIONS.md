@@ -142,3 +142,15 @@ Capacitor build leads with **Export to COROS** (native share) and offers Downloa
 Any non-abort share failure downloads instead. **Consequences:** the web download is reliable
 regardless of Web Share support; sharing is an enhancement, never a dead end. Unit-tested via
 injected `nav`/`native` seams; the real download mechanism was confirmed in headless Chromium.
+
+## ADR-013 — Mapbox powers address/POI search; stops carry names
+**Status:** Accepted (2026-07-14). **Context:** Phase 8 adds a search box to add named stops
+(addresses + POIs), needing a geocoder. **Decision:** use **Mapbox Geocoding v6** client-side
+(the Mapbox token is already the one allowed client credential — CLAUDE.md invariant 1 — so no
+backend/ORS dependency, and search works even without the ORS key). `lib/geocode.ts` parses the
+response (pure, coverage-gated) behind `contracts/mapbox.ts`; `services/geocodeClient.ts` builds
+the request (token injectable for tests); `usePlaceSearch` + a 300 ms debounce drive `SearchBox`.
+The `Waypoint` model gains an optional `name`, so searched places and map clicks share one
+ordered stop list (`WaypointList`: start/via/end roles, reorder, reverse). **Consequences:** a
+second Mapbox API surface (geocoding attribution added); a bad/absent token degrades to no
+suggestions, never a crash. ORS remains the single source of truth for routing + elevation.

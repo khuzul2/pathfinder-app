@@ -1,3 +1,4 @@
+import { SearchBox } from './SearchBox';
 import { WaypointList } from './WaypointList';
 import { ElevationCard } from './ElevationCard';
 import { ElevationChart } from './ElevationChart';
@@ -21,6 +22,7 @@ export function Sidebar() {
 
       <section aria-label="Route builder" className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold">Plan a route</h2>
+        <SearchBox />
         <WaypointList />
       </section>
 

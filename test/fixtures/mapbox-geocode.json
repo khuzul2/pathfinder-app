@@ -1,0 +1,45 @@
+{
+  "type": "FeatureCollection",
+  "attribution": "© Mapbox",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "place.1",
+      "geometry": { "type": "Point", "coordinates": [11.4512, 46.0631] },
+      "properties": {
+        "mapbox_id": "dXJuOm1ieHBsYzpzZXJzbw",
+        "feature_type": "place",
+        "name": "Serso",
+        "name_preferred": "Serso",
+        "place_formatted": "Autonomous Province of Trento, Italy",
+        "full_address": "Serso, Autonomous Province of Trento, Italy",
+        "coordinates": { "longitude": 11.4512, "latitude": 46.0631 }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "locality.2",
+      "geometry": { "type": "Point", "coordinates": [14.6889, 45.3167] },
+      "properties": {
+        "mapbox_id": "dXJuOm1ieHBsYzpzYXJzb25p",
+        "feature_type": "locality",
+        "name": "Saršoni",
+        "place_formatted": "Croatia",
+        "full_address": "Saršoni, Croatia",
+        "coordinates": { "longitude": 14.6889, "latitude": 45.3167 }
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "address.3",
+      "geometry": { "type": "Point", "coordinates": [11.615, 48.155] },
+      "properties": {
+        "mapbox_id": "dXJuOm1ieGFkcjphcmFiZWxsYQ",
+        "feature_type": "address",
+        "name": "Arabellastraße 5",
+        "place_formatted": "81925 München, Germany",
+        "full_address": "Arabellastraße 5, 81925 München, Germany"
+      }
+    }
+  ]
+}

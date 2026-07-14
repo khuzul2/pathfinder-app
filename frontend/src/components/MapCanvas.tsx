@@ -160,14 +160,22 @@ export function MapCanvas() {
     const mapboxgl = mapboxRef.current;
     if (!map || !mapboxgl) return;
 
+    const roleColor = (index: number): string => {
+      if (index === 0) return '#0F9D58'; // start
+      if (index === waypoints.length - 1) return '#EA4335'; // end
+      return '#4285F4'; // via
+    };
+
     markersRef.current.forEach((m) => m.remove());
     markersRef.current = waypoints.map((wp, index) => {
-      const marker = new mapboxgl.Marker({ color: '#4285F4', draggable: true })
+      const marker = new mapboxgl.Marker({ color: roleColor(index), draggable: true })
         .setLngLat([wp.lng, wp.lat])
         .addTo(map);
+      if (wp.name) marker.getElement().title = wp.name;
       marker.on('dragend', () => {
         const { lng, lat } = marker.getLngLat();
-        useAppStore.getState().updateWaypoint(index, { lng, lat });
+        // Keep the stop's label when its position is dragged.
+        useAppStore.getState().updateWaypoint(index, { lng, lat, name: wp.name });
       });
       return marker;
     });
