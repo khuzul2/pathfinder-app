@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useAppStore } from '../state/store';
 import type { Waypoint } from '../state/store';
 
@@ -15,19 +16,20 @@ function labelOf(wp: Waypoint): string {
   return wp.name ?? `${wp.lat.toFixed(4)}, ${wp.lng.toFixed(4)}`;
 }
 
-/** Ordered list of route stops (start · intermediate · end) with reorder, reverse and delete. */
+/** Ordered list of route stops (start · intermediate · end): drag to reorder, ↑↓, reverse, delete. */
 export function WaypointList() {
   const waypoints = useAppStore((s) => s.waypoints);
   const removeWaypoint = useAppStore((s) => s.removeWaypoint);
   const moveWaypoint = useAppStore((s) => s.moveWaypoint);
   const reverseWaypoints = useAppStore((s) => s.reverseWaypoints);
   const clearWaypoints = useAppStore((s) => s.clearWaypoints);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   if (waypoints.length === 0) {
     return (
       <p className="rounded-lg border border-dashed border-neutral-300 px-3 py-4 text-sm text-slate-accent/70 dark:border-neutral-600 dark:text-neutral-300">
-        Search for a place above, or click the map to add stops. The route snaps to real trails
-        between them — drag a pin to adjust it.
+        Search for a place above, or double-click the map to add stops. The route snaps to real
+        trails between them — drag a pin to adjust it.
       </p>
     );
   }
@@ -65,8 +67,25 @@ export function WaypointList() {
           return (
             <li
               key={`${i}-${wp.lng.toFixed(4)}-${wp.lat.toFixed(4)}`}
-              className="flex items-center gap-2 rounded-md bg-neutral-100 px-2 py-1 text-sm dark:bg-neutral-700"
+              draggable
+              onDragStart={() => setDragIndex(i)}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={() => {
+                if (dragIndex !== null && dragIndex !== i) moveWaypoint(dragIndex, i);
+                setDragIndex(null);
+              }}
+              onDragEnd={() => setDragIndex(null)}
+              className={`flex items-center gap-2 rounded-md bg-neutral-100 px-2 py-1 text-sm dark:bg-neutral-700 ${
+                dragIndex === i ? 'opacity-40' : ''
+              }`}
             >
+              <span
+                aria-hidden="true"
+                title="Drag to reorder"
+                className="cursor-grab select-none text-neutral-400"
+              >
+                ⠿
+              </span>
               <span
                 className="flex h-5 min-w-[2.5rem] shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold uppercase text-white"
                 style={{ backgroundColor: role.color }}

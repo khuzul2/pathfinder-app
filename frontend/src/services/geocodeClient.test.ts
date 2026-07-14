@@ -4,7 +4,7 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { searchPlaces } from './geocodeClient';
+import { searchPlaces, reverseGeocode } from './geocodeClient';
 
 const fixture = JSON.parse(
   readFileSync(resolve(process.cwd(), 'test/fixtures/mapbox-geocode.json'), 'utf-8'),
@@ -56,5 +56,21 @@ describe('searchPlaces', () => {
       http.get('*/search/geocode/v6/forward', () => new HttpResponse(null, { status: 429 })),
     );
     await expect(searchPlaces('munich', { token: 'pk.test' })).rejects.toThrow(/429/);
+  });
+});
+
+describe('reverseGeocode', () => {
+  it('returns the first result name for a point', async () => {
+    server.use(http.get('*/search/geocode/v6/reverse', () => HttpResponse.json(fixture)));
+    const name = await reverseGeocode(11.45, 46.06, { token: 'pk.test' });
+    expect(name).toBe('Serso');
+  });
+
+  it('returns null on failure or missing token', async () => {
+    server.use(
+      http.get('*/search/geocode/v6/reverse', () => new HttpResponse(null, { status: 500 })),
+    );
+    expect(await reverseGeocode(11.45, 46.06, { token: 'pk.test' })).toBeNull();
+    expect(await reverseGeocode(11.45, 46.06, { token: '' })).toBeNull();
   });
 });

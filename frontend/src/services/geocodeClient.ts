@@ -2,6 +2,7 @@ import { parseGeocodeResults, type GeocodeResult } from '../lib/geocode';
 import type { LngLat } from '../lib/geo';
 
 const ENDPOINT = 'https://api.mapbox.com/search/geocode/v6/forward';
+const REVERSE_ENDPOINT = 'https://api.mapbox.com/search/geocode/v6/reverse';
 
 export interface SearchOptions {
   signal?: AbortSignal;
@@ -42,4 +43,32 @@ export async function searchPlaces(
   });
   if (!res.ok) throw new Error(`Geocoding failed (${res.status})`);
   return parseGeocodeResults(await res.json());
+}
+
+/**
+ * Reverse-geocode a point to a place/address name (for labelling a map-clicked stop). Returns
+ * `null` on any failure or missing token — the caller falls back to showing coordinates.
+ */
+export async function reverseGeocode(
+  lng: number,
+  lat: number,
+  opts: { signal?: AbortSignal; token?: string; endpoint?: string } = {},
+): Promise<string | null> {
+  const token = opts.token ?? import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+  if (!token) return null;
+  const params = new URLSearchParams({
+    longitude: String(lng),
+    latitude: String(lat),
+    access_token: token,
+    limit: '1',
+  });
+  try {
+    const res = await fetch(`${opts.endpoint ?? REVERSE_ENDPOINT}?${params.toString()}`, {
+      signal: opts.signal,
+    });
+    if (!res.ok) return null;
+    return parseGeocodeResults(await res.json())[0]?.name ?? null;
+  } catch {
+    return null;
+  }
 }

@@ -202,3 +202,18 @@ mirrors the selected one (so elevation/day-plan/export follow it); non-selected 
 faded grey lines beneath the coloured main line. **Consequences:** meaningful, non-misleading
 choices for point-to-point routes; multi-stop routes simply show the single computed route. A
 "scenic"/surface-weighted variant is a possible future addition (needs a per-route paved metric).
+
+## ADR-017 — Route rendering & map interaction refinements (from live QA)
+**Status:** Accepted (2026-07-14); amends ADR-010's on-map difficulty coloring. **Context:**
+live testing found the selected route hard to see and to distinguish from alternatives, the
+route occasionally appearing "lost", and clunky stop entry. **Decisions:** (1) the **selected
+route is a solid blue line drawn from `route.points`** (not the per-SAC-segment coloring) — robust
+(never blank from a degenerate segment split), clearly visible over green terrain, and distinct
+from the grey alternatives; SAC difficulty stays in the sidebar legend (map difficulty coloring
+is dropped). The selected route is force-raised above the alternatives (`moveLayer`). (2)
+**Alternatives** are a stronger grey and interactive — hover highlights, click selects. (3) Stops
+are added by **double-click** (single click is reserved for selecting an alternative; default
+double-click-zoom disabled), snapping to a POI within ~100 m or reverse-geocoding a place/address
+name so the stop list shows names, not raw coordinates. (4) The stop list is **drag-and-drop
+reorderable** (↑/↓ retained for accessibility). **Consequences:** clearer, more predictable map
+UX; difficulty is legend-only on the map (a colored overlay could return as a future option).

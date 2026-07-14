@@ -14,6 +14,8 @@ import { MAP_STYLE, DEFAULT_CENTER, DEFAULT_ZOOM } from '../lib/mapConfig';
 import { buildRadarTileUrl, RADAR_MAX_ZOOM } from '../lib/radar';
 import { POI_META } from '../lib/poiApi';
 import type { Poi } from '../lib/poiApi';
+import { haversineMeters } from '../lib/geo';
+import { reverseGeocode } from '../services/geocodeClient';
 
 /** The subset of the lazy-loaded mapbox-gl default export we use. */
 interface MapboxApi {
@@ -34,6 +36,38 @@ const TRAILS_LAYER = 'waymarked-hiking-layer';
 
 /** Waymarked Trails renders OSM hiking relations (SAC-coloured routes) as a raster overlay. */
 const TRAILS_TILES = 'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png';
+
+/** Nearest POI to a point within `maxMeters`, else null (for snapping a dropped stop). */
+function nearestPoi(pois: readonly Poi[], lng: number, lat: number, maxMeters: number): Poi | null {
+  let best: Poi | null = null;
+  let bestDist = maxMeters;
+  for (const p of pois) {
+    const d = haversineMeters({ lng, lat }, { lng: p.lng, lat: p.lat });
+    if (d <= bestDist) {
+      bestDist = d;
+      best = p;
+    }
+  }
+  return best;
+}
+
+/**
+ * Add a stop at a clicked point: snap to a nearby POI (using its name) when one is within ~100 m,
+ * otherwise drop the exact point and reverse-geocode a place/address name for the stops list.
+ */
+function addStopAt(lng: number, lat: number): void {
+  const store = useAppStore.getState();
+  const poi = nearestPoi(store.pois, lng, lat, 100);
+  if (poi) {
+    store.addWaypoint({ lng: poi.lng, lat: poi.lat, name: poi.name ?? POI_META[poi.kind].label });
+    return;
+  }
+  const index = store.waypoints.length;
+  store.addWaypoint({ lng, lat });
+  void reverseGeocode(lng, lat).then((name) => {
+    if (name) useAppStore.getState().updateWaypoint(index, { lng, lat, name });
+  });
+}
 
 /** A numbered, draggable stop pin coloured by role (start green · via blue · end red). */
 function buildWaypointElement(index: number, total: number, name?: string): HTMLDivElement {
@@ -144,17 +178,15 @@ export function MapCanvas() {
         map.on('load', () => {
           readyRef.current = true;
         });
+        // Double-click adds a stop (single click is reserved for selecting an alternative), so
+        // disable the default double-click-to-zoom.
+        map.doubleClickZoom.disable();
         map.on('click', (e) => {
-          // Clicking an alternative route selects it (rather than dropping a new stop).
-          if (map.getLayer(ALT_LAYER)) {
-            const hit = map.queryRenderedFeatures(e.point, { layers: [ALT_LAYER] })[0];
-            if (hit && typeof hit.id === 'number') {
-              useAppStore.getState().selectRoute(hit.id);
-              return;
-            }
-          }
-          useAppStore.getState().addWaypoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
+          if (!map.getLayer(ALT_LAYER)) return;
+          const hit = map.queryRenderedFeatures(e.point, { layers: [ALT_LAYER] })[0];
+          if (hit && typeof hit.id === 'number') useAppStore.getState().selectRoute(hit.id);
         });
+        map.on('dblclick', (e) => addStopAt(e.lngLat.lng, e.lngLat.lat));
         map.on('moveend', () => {
           const b = map.getBounds();
           if (!b) return;
@@ -332,33 +364,45 @@ export function MapCanvas() {
     else map.once('load', draw);
   }, [alternatives, selectedRouteIndex]);
 
-  // --- snapped route line ---
+  // --- selected route line (solid blue, from the full geometry) ---
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     const draw = () => {
-      // One colored feature per constant-difficulty stretch (SAC scale).
-      const features = (route?.difficultySegments ?? []).map((seg) => ({
-        type: 'Feature' as const,
-        properties: { color: seg.color },
-        geometry: { type: 'LineString' as const, coordinates: seg.coordinates },
-      }));
-      const data = { type: 'FeatureCollection' as const, features };
+      // Drawn straight from route.points (robust — never depends on the difficulty-segment split,
+      // which could otherwise leave the line blank). Solid blue keeps the SELECTED route clearly
+      // visible over the green terrain and distinct from the grey alternatives; the SAC difficulty
+      // is conveyed by the sidebar legend.
+      const coords = (route?.points ?? []).map((p) => [p.lng, p.lat] as [number, number]);
+      const data = {
+        type: 'FeatureCollection' as const,
+        features:
+          coords.length >= 2
+            ? [
+                {
+                  type: 'Feature' as const,
+                  properties: {},
+                  geometry: { type: 'LineString' as const, coordinates: coords },
+                },
+              ]
+            : [],
+      };
       const existing = map.getSource(ROUTE_SOURCE) as GeoJSONSource | undefined;
       if (existing) {
         existing.setData(data);
-        return;
+      } else if (coords.length >= 2) {
+        map.addSource(ROUTE_SOURCE, { type: 'geojson', data });
+        map.addLayer({
+          id: ROUTE_LAYER,
+          type: 'line',
+          source: ROUTE_SOURCE,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': '#1A73E8', 'line-width': 6 },
+        });
       }
-      if (features.length === 0) return;
-      map.addSource(ROUTE_SOURCE, { type: 'geojson', data });
-      map.addLayer({
-        id: ROUTE_LAYER,
-        type: 'line',
-        source: ROUTE_SOURCE,
-        layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': ['get', 'color'], 'line-width': 6 },
-      });
+      // Always keep the selected route above the grey alternative lines.
+      if (map.getLayer(ROUTE_LAYER)) map.moveLayer(ROUTE_LAYER);
     };
 
     if (map.isStyleLoaded()) draw();
