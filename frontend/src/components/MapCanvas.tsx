@@ -100,6 +100,7 @@ export function MapCanvas() {
   const mapRef = useRef<MapboxMap | null>(null);
   const mapboxRef = useRef<MapboxApi | null>(null);
   const readyRef = useRef(false);
+  const hoveredAltRef = useRef<number | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const poiMarkersRef = useRef<Marker[]>([]);
   const poiPopupRef = useRef<Popup | null>(null);
@@ -143,6 +144,14 @@ export function MapCanvas() {
           readyRef.current = true;
         });
         map.on('click', (e) => {
+          // Clicking an alternative route selects it (rather than dropping a new stop).
+          if (map.getLayer(ALT_LAYER)) {
+            const hit = map.queryRenderedFeatures(e.point, { layers: [ALT_LAYER] })[0];
+            if (hit && typeof hit.id === 'number') {
+              useAppStore.getState().selectRoute(hit.id);
+              return;
+            }
+          }
           useAppStore.getState().addWaypoint({ lng: e.lngLat.lng, lat: e.lngLat.lat });
         });
         map.on('moveend', () => {
@@ -238,12 +247,15 @@ export function MapCanvas() {
     if (!map) return;
 
     const draw = () => {
+      // Each feature keeps its ORIGINAL alternative index (as the GeoJSON id) so a map click can
+      // select it; the currently-selected route is drawn by ROUTE_LAYER, not here.
       const features = alternatives
         .map((r, i) => ({ r, i }))
         .filter(({ i }) => i !== selectedRouteIndex)
-        .map(({ r }) => ({
+        .map(({ r, i }) => ({
           type: 'Feature' as const,
-          properties: {},
+          id: i,
+          properties: { index: i },
           geometry: {
             type: 'LineString' as const,
             coordinates: r.points.map((p) => [p.lng, p.lat]),
@@ -264,10 +276,33 @@ export function MapCanvas() {
           type: 'line',
           source: ALT_SOURCE,
           layout: { 'line-cap': 'round', 'line-join': 'round' },
-          paint: { 'line-color': '#8A8F98', 'line-width': 4, 'line-opacity': 0.45 },
+          paint: {
+            'line-color': '#5F6368',
+            'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 6, 5],
+            'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 0.95, 0.7],
+          },
         },
         beforeId,
       );
+
+      // Hover feedback + pointer cursor over an alternative (registered once with the layer).
+      map.on('mousemove', ALT_LAYER, (e) => {
+        map.getCanvas().style.cursor = 'pointer';
+        const id = e.features?.[0]?.id;
+        if (typeof id !== 'number') return;
+        if (hoveredAltRef.current !== null && hoveredAltRef.current !== id) {
+          map.setFeatureState({ source: ALT_SOURCE, id: hoveredAltRef.current }, { hover: false });
+        }
+        hoveredAltRef.current = id;
+        map.setFeatureState({ source: ALT_SOURCE, id }, { hover: true });
+      });
+      map.on('mouseleave', ALT_LAYER, () => {
+        map.getCanvas().style.cursor = '';
+        if (hoveredAltRef.current !== null) {
+          map.setFeatureState({ source: ALT_SOURCE, id: hoveredAltRef.current }, { hover: false });
+          hoveredAltRef.current = null;
+        }
+      });
     };
 
     if (map.isStyleLoaded()) draw();
@@ -299,7 +334,7 @@ export function MapCanvas() {
         type: 'line',
         source: ROUTE_SOURCE,
         layout: { 'line-cap': 'round', 'line-join': 'round' },
-        paint: { 'line-color': ['get', 'color'], 'line-width': 5 },
+        paint: { 'line-color': ['get', 'color'], 'line-width': 6 },
       });
     };
 

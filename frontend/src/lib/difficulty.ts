@@ -12,7 +12,7 @@ export interface DifficultyLevel {
 }
 
 export const SAC_DIFFICULTY: Readonly<Record<number, DifficultyLevel>> = {
-  0: { label: 'Path (grade unknown)', short: '—', color: '#5F6368' },
+  0: { label: 'Path (grade unknown)', short: '—', color: '#1A73E8' },
   1: { label: 'Hiking (T1)', short: 'T1', color: '#0F9D58' },
   2: { label: 'Mountain hiking (T2)', short: 'T2', color: '#7CB342' },
   3: { label: 'Demanding mountain (T3)', short: 'T3', color: '#F9AB00' },
