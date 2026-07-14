@@ -48,6 +48,29 @@ describe('POST /api/route', () => {
     expect(res.status).toBe(400);
   });
 
+  it('requests ORS alternatives for a two-waypoint route', async () => {
+    const app = createApp({ orsApiKey: 'test-ors-key' });
+    await request(app)
+      .post('/api/route')
+      .send({ ...validBody, alternatives: true });
+    expect(captured.orsAlternatives).toBe(true);
+  });
+
+  it('omits alternatives for more than two waypoints', async () => {
+    const app = createApp({ orsApiKey: 'test-ors-key' });
+    await request(app)
+      .post('/api/route')
+      .send({
+        coordinates: [
+          [11.5, 48.1],
+          [11.6, 48.2],
+          [11.7, 48.3],
+        ],
+        alternatives: true,
+      });
+    expect(captured.orsAlternatives).toBe(false);
+  });
+
   it('rejects out-of-range coordinates with 400', async () => {
     const app = createApp({ orsApiKey: 'test-ors-key' });
     const res = await request(app)

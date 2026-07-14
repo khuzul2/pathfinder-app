@@ -3,17 +3,24 @@ import { analyzeRoute, type RouteAnalysis } from './route';
 import type { LngLat } from './geo';
 import type { RouteFetchOptions } from './routingOptions';
 
-/** Validate a raw ORS geojson response and turn it into a RouteAnalysis (surface + difficulty). */
-export function toRouteAnalysis(json: unknown): RouteAnalysis {
+/** Validate a raw ORS geojson response and analyze EVERY feature (recommended + alternatives). */
+export function toRouteAnalyses(json: unknown): RouteAnalysis[] {
   const parsed = OrsRouteResponseSchema.parse(json);
-  const feature = parsed.features[0];
-  if (!feature) throw new Error('route response contained no features');
-  const extras = feature.properties.extras;
-  return analyzeRoute(
-    feature.geometry.coordinates,
-    extras?.surface?.values,
-    extras?.traildifficulty?.values,
-  );
+  return parsed.features.map((feature) => {
+    const extras = feature.properties.extras;
+    return analyzeRoute(
+      feature.geometry.coordinates,
+      extras?.surface?.values,
+      extras?.traildifficulty?.values,
+    );
+  });
+}
+
+/** Validate a raw ORS geojson response and turn its first feature into a RouteAnalysis. */
+export function toRouteAnalysis(json: unknown): RouteAnalysis {
+  const first = toRouteAnalyses(json)[0];
+  if (!first) throw new Error('route response contained no features');
+  return first;
 }
 
 /**
@@ -27,8 +34,21 @@ export async function requestRoute(
   options: RouteFetchOptions = {},
   signal?: AbortSignal,
 ): Promise<RouteAnalysis> {
+  return (await requestRoutes(waypoints, options, signal))[0]!;
+}
+
+/**
+ * Like `requestRoute`, but asks the proxy for alternative routes (only meaningful for a simple
+ * start→end pair) and returns the recommended route first followed by any alternatives.
+ */
+export async function requestRoutes(
+  waypoints: readonly LngLat[],
+  options: RouteFetchOptions = {},
+  signal?: AbortSignal,
+): Promise<RouteAnalysis[]> {
   const body: Record<string, unknown> = { coordinates: waypoints.map((w) => [w.lng, w.lat]) };
   if (options.profile) body.profile = options.profile;
+  if (waypoints.length === 2) body.alternatives = true;
   const res = await fetch('/api/route', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -38,5 +58,5 @@ export async function requestRoute(
   if (!res.ok) {
     throw new Error(`route request failed (${res.status})`);
   }
-  return toRouteAnalysis(await res.json());
+  return toRouteAnalyses(await res.json());
 }

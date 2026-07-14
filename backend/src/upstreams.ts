@@ -68,6 +68,15 @@ export async function fetchRoute(
 ): Promise<unknown> {
   // `profile` is a validated enum, so this URL is never client-controlled (SSRF-safe).
   const profile = body.profile ?? 'foot-hiking';
+  const orsBody: Record<string, unknown> = {
+    coordinates: body.coordinates,
+    elevation: true,
+    extra_info: ['surface', 'traildifficulty', 'steepness'],
+  };
+  // ORS only supports alternatives for exactly two waypoints.
+  if (body.alternatives && body.coordinates.length === 2) {
+    orsBody.alternative_routes = { target_count: 3, share_factor: 0.6, weight_factor: 1.6 };
+  }
   const res = await fetchWithTimeout(
     `${ORS_BASE}/${profile}/geojson`,
     {
@@ -78,11 +87,7 @@ export async function fetchRoute(
         Accept: 'application/geo+json',
         'User-Agent': USER_AGENT,
       },
-      body: JSON.stringify({
-        coordinates: body.coordinates,
-        elevation: true,
-        extra_info: ['surface', 'traildifficulty', 'steepness'],
-      }),
+      body: JSON.stringify(orsBody),
     },
     timeoutMs,
   );

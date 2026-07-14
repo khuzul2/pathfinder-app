@@ -2,6 +2,7 @@ import { RoutesPanel } from './RoutesPanel';
 import { SearchBox } from './SearchBox';
 import { WaypointList } from './WaypointList';
 import { RoutingOptions } from './RoutingOptions';
+import { AlternativesPanel } from './AlternativesPanel';
 import { ElevationCard } from './ElevationCard';
 import { ElevationChart } from './ElevationChart';
 import { DaySlicer } from './DaySlicer';
@@ -33,6 +34,7 @@ export function Sidebar() {
       </section>
 
       <RoutingOptions />
+      <AlternativesPanel />
 
       <ElevationCard />
       <ElevationChart />

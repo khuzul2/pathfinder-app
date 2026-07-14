@@ -186,3 +186,19 @@ DP prefers a real shelter when one is close and drops a wild camp at the ideal s
 `autoOvernight` gates it (off → single push). **Consequences:** a real, testable behavior change
 for road avoidance; multi-day plans now always exist when wanted (bivvy guarantees a legal split).
 The overnight-stop map markers (bivvy pins) are a small follow-up.
+
+## ADR-016 — Alternative routes: ORS alternatives + honest superlative labels
+**Status:** Accepted (2026-07-14). **Context:** users want to pick from route options that
+"make sense". **Decisions:** (1) **Source** — ORS `alternative_routes` (target_count 3), which
+only supports a start→end pair, so alternatives appear only for a 2-stop route; the response's
+features are ALL analyzed (`toRouteAnalyses`). It is **best-effort**: the demo path retries
+without alternatives and then falls back to a synthetic route, so the primary route always
+renders; the backend forwards a validated `alternatives` flag. (2) **Labels are honest** —
+`labelAlternatives` calls the first (ORS-recommended) "Recommended" and gives each other option
+the superlative it genuinely wins across the set (Fastest / Shortest / Least climbing), else a
+numbered "Alternative"; the card shows time · distance · ascent so the user chooses on real
+trade-offs. (3) **Selection** — `alternatives` + `selectedRouteIndex` in the store; `route`
+mirrors the selected one (so elevation/day-plan/export follow it); non-selected routes draw as
+faded grey lines beneath the coloured main line. **Consequences:** meaningful, non-misleading
+choices for point-to-point routes; multi-stop routes simply show the single computed route. A
+"scenic"/surface-weighted variant is a possible future addition (needs a per-route paved metric).

@@ -1,7 +1,7 @@
-import { requestRoute } from '../lib/routeApi';
+import { requestRoutes } from '../lib/routeApi';
 import { requestPois, type Poi, type Bbox } from '../lib/poiApi';
 import { RainViewerMapsSchema, type RainViewerMaps } from '../contracts/rainviewer';
-import { requestRouteDirect, requestPoisDirect, requestRadarDirect } from '../demo/directApi';
+import { requestRoutesDirect, requestPoisDirect, requestRadarDirect } from '../demo/directApi';
 import type { LngLat } from '../lib/geo';
 import type { RouteAnalysis } from '../lib/route';
 import type { RouteFetchOptions } from '../lib/routingOptions';
@@ -13,14 +13,15 @@ import type { RouteFetchOptions } from '../lib/routingOptions';
  */
 const DEMO = import.meta.env.VITE_DEMO === '1';
 
-export function getRoute(
+/** The recommended route first, followed by any alternatives (empty extras for a single route). */
+export function getRoutes(
   waypoints: readonly LngLat[],
   options: RouteFetchOptions = {},
   signal?: AbortSignal,
-): Promise<RouteAnalysis> {
+): Promise<RouteAnalysis[]> {
   return DEMO
-    ? requestRouteDirect(waypoints, options, signal)
-    : requestRoute(waypoints, options, signal);
+    ? requestRoutesDirect(waypoints, options, signal)
+    : requestRoutes(waypoints, options, signal);
 }
 
 export function getPois(bbox: Bbox, signal?: AbortSignal): Promise<Poi[]> {

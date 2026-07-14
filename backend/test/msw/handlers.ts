@@ -15,16 +15,19 @@ export const RAINVIEWER_URL = 'https://api.rainviewer.com/public/weather-maps.js
 export const captured: {
   orsAuth: string | null;
   orsProfile: string | null;
+  orsAlternatives: boolean;
   weatherAppid: string | null;
 } = {
   orsAuth: null,
   orsProfile: null,
+  orsAlternatives: false,
   weatherAppid: null,
 };
 
 export function resetCaptured(): void {
   captured.orsAuth = null;
   captured.orsProfile = null;
+  captured.orsAlternatives = false;
   captured.weatherAppid = null;
 }
 
@@ -33,9 +36,11 @@ function fixture(name: string): any {
 }
 
 export const handlers = [
-  http.post(ORS_URL_PATTERN, ({ request, params }) => {
+  http.post(ORS_URL_PATTERN, async ({ request, params }) => {
     captured.orsAuth = request.headers.get('authorization');
     captured.orsProfile = typeof params.profile === 'string' ? params.profile : null;
+    const body = (await request.json().catch(() => ({}))) as { alternative_routes?: unknown };
+    captured.orsAlternatives = body.alternative_routes != null;
     return HttpResponse.json(fixture('ors-foot-hiking.geojson'));
   }),
   http.get(OPENWEATHER_URL, ({ request }) => {

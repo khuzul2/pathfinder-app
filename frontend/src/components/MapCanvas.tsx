@@ -27,6 +27,8 @@ const RADAR_SOURCE = 'rainviewer-radar';
 const RADAR_LAYER = 'rainviewer-radar-layer';
 const ROUTE_SOURCE = 'route';
 const ROUTE_LAYER = 'route-line';
+const ALT_SOURCE = 'route-alternatives';
+const ALT_LAYER = 'route-alternatives-line';
 const TRAILS_SOURCE = 'waymarked-hiking';
 const TRAILS_LAYER = 'waymarked-hiking-layer';
 
@@ -95,6 +97,8 @@ export function MapCanvas() {
 
   const waypoints = useAppStore((s) => s.waypoints);
   const route = useAppStore((s) => s.route);
+  const alternatives = useAppStore((s) => s.alternatives);
+  const selectedRouteIndex = useAppStore((s) => s.selectedRouteIndex);
   const pois = useAppStore((s) => s.pois);
   const poiFilters = useAppStore((s) => s.poiFilters);
   const forcedStopIds = useAppStore((s) => s.forcedStopIds);
@@ -223,6 +227,48 @@ export function MapCanvas() {
     if (map.isStyleLoaded()) apply();
     else map.once('load', apply);
   }, [trailsOverlay]);
+
+  // --- non-selected alternative routes (faded, beneath the main line) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const draw = () => {
+      const features = alternatives
+        .map((r, i) => ({ r, i }))
+        .filter(({ i }) => i !== selectedRouteIndex)
+        .map(({ r }) => ({
+          type: 'Feature' as const,
+          properties: {},
+          geometry: {
+            type: 'LineString' as const,
+            coordinates: r.points.map((p) => [p.lng, p.lat]),
+          },
+        }));
+      const data = { type: 'FeatureCollection' as const, features };
+      const existing = map.getSource(ALT_SOURCE) as GeoJSONSource | undefined;
+      if (existing) {
+        existing.setData(data);
+        return;
+      }
+      if (features.length === 0) return;
+      map.addSource(ALT_SOURCE, { type: 'geojson', data });
+      const beforeId = map.getLayer(ROUTE_LAYER) ? ROUTE_LAYER : undefined;
+      map.addLayer(
+        {
+          id: ALT_LAYER,
+          type: 'line',
+          source: ALT_SOURCE,
+          layout: { 'line-cap': 'round', 'line-join': 'round' },
+          paint: { 'line-color': '#8A8F98', 'line-width': 4, 'line-opacity': 0.45 },
+        },
+        beforeId,
+      );
+    };
+
+    if (map.isStyleLoaded()) draw();
+    else map.once('load', draw);
+  }, [alternatives, selectedRouteIndex]);
 
   // --- snapped route line ---
   useEffect(() => {

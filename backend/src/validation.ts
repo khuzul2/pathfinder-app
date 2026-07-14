@@ -11,13 +11,15 @@ const Latitude = z.number().gte(-90).lte(90);
 export const OrsProfileSchema = z.enum(['foot-hiking', 'foot-walking']);
 export type OrsProfile = z.infer<typeof OrsProfileSchema>;
 
-/** POST /api/route body — a bounded list of [lng, lat] waypoints and an optional foot profile. */
+/** POST /api/route body — bounded [lng, lat] waypoints, an optional foot profile, and a flag
+ * to request alternative routes (honored only for a simple start→end pair). */
 export const RouteRequestSchema = z.object({
   coordinates: z
     .array(z.tuple([Longitude, Latitude]))
     .min(2)
     .max(50),
   profile: OrsProfileSchema.optional(),
+  alternatives: z.boolean().optional(),
 });
 export type RouteRequest = z.infer<typeof RouteRequestSchema>;
 

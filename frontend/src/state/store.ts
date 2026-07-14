@@ -39,6 +39,12 @@ export interface AppState {
   route: RouteAnalysis | null;
   setRoute: (route: RouteAnalysis | null) => void;
 
+  /** Route options (recommended + alternatives, Phase 8); `route` mirrors the selected one. */
+  alternatives: RouteAnalysis[];
+  selectedRouteIndex: number;
+  setAlternatives: (routes: RouteAnalysis[]) => void;
+  selectRoute: (index: number) => void;
+
   routeError: string | null;
   setRouteError: (message: string | null) => void;
 
@@ -133,6 +139,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       waypoints: [],
       route: null,
+      alternatives: [],
+      selectedRouteIndex: 0,
       routeError: null,
       hoverIndex: null,
       slicePlan: null,
@@ -141,6 +149,16 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   route: null,
   setRoute: (route) => set({ route }),
+
+  alternatives: [],
+  selectedRouteIndex: 0,
+  setAlternatives: (routes) =>
+    set({ alternatives: routes, route: routes[0] ?? null, selectedRouteIndex: 0 }),
+  selectRoute: (index) =>
+    set((state) => {
+      const chosen = state.alternatives[index];
+      return chosen ? { route: chosen, selectedRouteIndex: index } : {};
+    }),
 
   routeError: null,
   setRouteError: (message) => set({ routeError: message }),
@@ -188,6 +206,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       waypoints: [],
       route: null,
+      alternatives: [],
+      selectedRouteIndex: 0,
       routeError: null,
       hoverIndex: null,
       slicePlan: null,
@@ -201,6 +221,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       waypoints: saved.waypoints,
       route: saved.route ?? null,
+      alternatives: saved.route ? [saved.route] : [],
+      selectedRouteIndex: 0,
       routeError: null,
       hoverIndex: null,
       slicePlan: null,

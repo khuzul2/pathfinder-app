@@ -137,8 +137,11 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
       camp); `useDayPlan` filters candidate shelters by the multi-select stay types (huts /
       campsites / bivvy) and gates on `autoOvernight`. Controls in `RoutingOptions`; day list
       shows stay-type icons.
-- [ ] **P8-3** Alternative routes (ORS `alternative_routes` for 2 stops + themed: overnight-via,
-      scenic-by-surface); pick from cards, non-selected drawn faded on the map.
+- [x] **P8-3** Alternative routes: ORS `alternative_routes` for a start→end pair (best-effort,
+      falls back to the primary), all features analyzed (`toRouteAnalyses`); `lib/alternatives.ts`
+      labels them (Recommended + the superlative each wins). Store `alternatives`/`selectedRouteIndex`;
+      `AlternativesPanel` cards to pick; non-selected drawn faded on the map. Threaded through the
+      demo + proxy + backend (validated `alternatives` flag). ADR-016.
 
 ---
 
