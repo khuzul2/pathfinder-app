@@ -37,6 +37,9 @@ function postOrs(
 
 /** Extract a human-readable message from an ORS error response. */
 async function orsError(res: Response): Promise<string> {
+  if (res.status === 429) {
+    return 'Routing rate limit reached — please wait a minute and try again.';
+  }
   const body = (await res.json().catch(() => null)) as {
     error?: { message?: string } | string;
   } | null;
@@ -77,12 +80,21 @@ export async function requestRoutesDirect(
 
   try {
     let res = await postOrs(profile, enhanced, signal);
-    // radiuses / alternatives may be rejected — fall back to the minimal request before giving up.
-    if (!res.ok) res = await postOrs(profile, base, signal);
+    // Only a 400 means the radiuses/alternatives params were rejected — retry the minimal request
+    // then. Do NOT retry on 429/5xx (that just burns more of the rate-limit budget).
+    if (res.status === 400) res = await postOrs(profile, base, signal);
     if (!res.ok) throw new Error(await orsError(res));
     return toRouteAnalyses(await res.json());
   } catch (err) {
     if (signal?.aborted) throw err;
+    const msg = err instanceof Error ? err.message : 'Routing failed';
+    // A rejected fetch (CORS-less rate-limit response, offline, blocked) surfaces as "Failed to
+    // fetch" — translate it into something actionable.
+    if (/failed to fetch|networkerror|load failed/i.test(msg)) {
+      throw new Error(
+        'Routing service unreachable (possibly rate-limited) — wait a few seconds and try again.',
+      );
+    }
     throw err instanceof Error ? err : new Error('Routing failed');
   }
 }
