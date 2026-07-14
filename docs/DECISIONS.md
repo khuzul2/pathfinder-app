@@ -126,3 +126,19 @@ human-only, but the JS/TS integration is testable and belongs in the gate. **Dec
    The ORS key is baked into the APK; acceptable for a private, single-user, URL/key-restricted
    install. **Consequences:** `verify` covers the share integration; APK build + on-device COROS
    import remain in `docs/MANUAL_QA.md` (P7-2), never faked green.
+
+## ADR-012 — Export UX: a reliable download, sharing is best-effort with fallback
+**Status:** Accepted (2026-07-14). **Context:** the single "Export to COROS" button called
+Web Share first and `await`ed `navigator.share()` with no `catch`. In any browser that exposes
+Web Share for files (desktop Chrome on Windows/ChromeOS, Android Chrome), a rejected or
+dismissed share left the promise rejected and **never fell through to the download** — the
+button appeared to do nothing (owner-reported on the web app, 2026-07-14). **Decision:** split
+the action. `services/share.ts` now exposes `downloadGpxFiles` (a direct `<a download>` that
+works in every browser — with a deferred `revokeObjectURL` so the download isn't cancelled
+mid-flight), `canShareGpx` (native, or a browser that truly `canShare({files})`), and `shareGpx`
+which **throws** when sharing is impossible or fails. `ExportButton` leads with **Download GPX**
+on web (primary, always works) and shows **Share to COROS** only when `canShareGpx()`; the
+Capacitor build leads with **Export to COROS** (native share) and offers Download as a fallback.
+Any non-abort share failure downloads instead. **Consequences:** the web download is reliable
+regardless of Web Share support; sharing is an enhancement, never a dead end. Unit-tested via
+injected `nav`/`native` seams; the real download mechanism was confirmed in headless Chromium.

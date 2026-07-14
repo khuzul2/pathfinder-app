@@ -41,10 +41,11 @@ describe('ExportButton', () => {
     expect(container).toBeEmptyDOMElement();
   });
 
-  it('exports a valid GPX blob when clicked (downloads on web)', async () => {
+  it('downloads a valid GPX blob when the download button is clicked (web)', async () => {
     useAppStore.setState({ route });
     render(<ExportButton />);
-    await userEvent.click(screen.getByRole('button', { name: /export to coros/i }));
+    // On the web (jsdom has no Web Share API) the reliable download is the primary action.
+    await userEvent.click(screen.getByRole('button', { name: /download gpx/i }));
 
     const createObjectURL = URL.createObjectURL as unknown as ReturnType<typeof vi.fn>;
     expect(createObjectURL).toHaveBeenCalled();

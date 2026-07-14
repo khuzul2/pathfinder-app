@@ -10,11 +10,16 @@ export function downloadGpxFile(file: GpxFile, doc: Document = document): void {
   anchor.download = file.filename;
   doc.body.appendChild(anchor);
   anchor.click();
-  doc.body.removeChild(anchor);
-  URL.revokeObjectURL(url);
+  anchor.remove();
+  // Revoke later, not synchronously: some browsers cancel an in-flight download if the object
+  // URL is revoked in the same tick as the click.
+  setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
-export type ExportResult = 'shared' | 'downloaded';
+/** Download every GPX file (the combined route, plus any per-day courses). */
+export function downloadGpxFiles(files: readonly GpxFile[], doc: Document = document): void {
+  files.forEach((f) => downloadGpxFile(f, doc));
+}
 
 /** Native-share seam, injectable for tests (defaults to the real Capacitor bridge). */
 export interface NativeShareAdapter {
@@ -25,36 +30,50 @@ export interface NativeShareAdapter {
 const defaultNative: NativeShareAdapter = { isNative: isNativePlatform, share: shareGpxNative };
 
 /**
- * Send the route to another app (COROS). Priority: (1) the Capacitor Android native share
- * sheet, which accepts `.gpx` file URIs; (2) the Web Share API when the platform reports it
- * can share the files; (3) a plain `.gpx` download. On the web, browsers reject `.gpx` from
- * Web Share (`canShare` → false) so this downloads (ADR-008a; see docs/MANUAL_QA.md).
+ * Whether a "share" affordance can actually work here: the Capacitor native shell, or a browser
+ * whose Web Share API accepts files. When false, callers should offer only a download. (Most
+ * desktop browsers report false for file sharing — hence the always-available download.)
  */
-export async function shareOrDownloadGpx(
+export function canShareGpx(env: { nav?: Navigator; native?: NativeShareAdapter } = {}): boolean {
+  const native = env.native ?? defaultNative;
+  if (native.isNative()) return true;
+  const nav = env.nav ?? (typeof navigator !== 'undefined' ? navigator : undefined);
+  if (!nav || typeof nav.canShare !== 'function' || typeof nav.share !== 'function') return false;
+  try {
+    const probe = new File(['<gpx/>'], 'route.gpx', { type: 'application/gpx+xml' });
+    return nav.canShare({ files: [probe] });
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Share the GPX to another app (COROS). Native (Capacitor) opens the Android share sheet; a
+ * capable browser uses the Web Share API. **Throws** when sharing isn't possible or the share
+ * fails/aborts, so the caller can fall back to a download — never leave the user with nothing
+ * (that silent-failure was the old bug; ADR-012).
+ */
+export async function shareGpx(
   files: readonly GpxFile[],
-  env: { nav?: Navigator; doc?: Document; native?: NativeShareAdapter } = {},
-): Promise<ExportResult> {
+  env: { nav?: Navigator; native?: NativeShareAdapter } = {},
+): Promise<void> {
   const native = env.native ?? defaultNative;
   if (native.isNative()) {
     await native.share(files);
-    return 'shared';
+    return;
   }
 
   const nav = env.nav ?? navigator;
-  const doc = env.doc ?? document;
   const shareFiles = files.map(
     (f) => new File([f.contents], f.filename, { type: 'application/gpx+xml' }),
   );
-
   if (
     typeof nav.canShare === 'function' &&
     nav.canShare({ files: shareFiles }) &&
     typeof nav.share === 'function'
   ) {
     await nav.share({ files: shareFiles, title: 'Pathfinder route' });
-    return 'shared';
+    return;
   }
-
-  files.forEach((f) => downloadGpxFile(f, doc));
-  return 'downloaded';
+  throw new Error('Web Share is unavailable for GPX files on this platform');
 }
