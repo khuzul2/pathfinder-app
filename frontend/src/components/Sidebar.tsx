@@ -1,6 +1,5 @@
 import { RoutesPanel } from './RoutesPanel';
 import { SearchBox } from './SearchBox';
-import { TrailSearch } from './TrailSearch';
 import { WaypointList } from './WaypointList';
 import { RoutingOptions } from './RoutingOptions';
 import { AlternativesPanel } from './AlternativesPanel';
@@ -33,8 +32,6 @@ export function Sidebar() {
         <SearchBox />
         <WaypointList />
       </section>
-
-      <TrailSearch />
 
       <RoutingOptions />
       <AlternativesPanel />

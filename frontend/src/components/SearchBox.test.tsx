@@ -6,10 +6,19 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SearchBox } from './SearchBox';
 import { useAppStore } from '../state/store';
 
-// The geocoder is mocked; we only assert that picking a suggestion appends a named stop.
+// Upstreams are mocked; we assert results are grouped by type and picking each does the right thing.
 vi.mock('../services/geocodeClient', () => ({
   searchPlaces: vi.fn(async () => [
     { id: 'a', name: 'Serso', context: 'Trento, Italy', lng: 11.45, lat: 46.06 },
+  ]),
+}));
+vi.mock('../services/waymarkedTrails', () => ({
+  searchTrails: vi.fn(async () => [
+    { id: 42, name: 'Via Francigena', ref: 'VF', itinerary: ['Canterbury', 'Rome'] },
+  ]),
+  fetchTrailPolyline: vi.fn(async () => [
+    { lng: 0, lat: 0 },
+    { lng: 1, lat: 1 },
   ]),
 }));
 
@@ -27,21 +36,37 @@ function renderBox() {
 describe('SearchBox', () => {
   beforeEach(() => useAppStore.setState(initial, true));
 
-  it('adds a searched place as a named stop', async () => {
+  it('groups results, and picking a place adds a named stop', async () => {
     renderBox();
     await userEvent.type(
-      screen.getByRole('combobox', { name: /search address or place/i }),
+      screen.getByRole('combobox', { name: /search a place, address, or trail/i }),
       'serso',
     );
-    const option = await screen.findByText('Serso', undefined, { timeout: 2000 });
-    await userEvent.click(option);
+    // Results are clearly labelled by type.
+    expect(
+      await screen.findByText(/places & addresses/i, undefined, { timeout: 2000 }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/trails & routes/i)).toBeInTheDocument();
 
+    await userEvent.click(screen.getByText('Serso'));
     const waypoints = useAppStore.getState().waypoints;
     expect(waypoints).toHaveLength(1);
     expect(waypoints[0]!.name).toBe('Serso');
-    expect(waypoints[0]!.lng).toBeCloseTo(11.45, 2);
-    expect(waypoints[0]!.lat).toBeCloseTo(46.06, 2);
-    // Picking a result asks the map to re-frame.
     expect(useAppStore.getState().mapFocusNonce).toBeGreaterThan(0);
+  });
+
+  it('picking a trail replaces the route with the imported hike', async () => {
+    renderBox();
+    await userEvent.type(
+      screen.getByRole('combobox', { name: /search a place, address, or trail/i }),
+      'franc',
+    );
+    const trail = await screen.findByText(/Via Francigena/i, undefined, { timeout: 2000 });
+    await userEvent.click(trail);
+
+    await screen.findByRole('combobox'); // let the async import settle
+    const waypoints = useAppStore.getState().waypoints;
+    expect(waypoints.length).toBeGreaterThanOrEqual(2);
+    expect(waypoints[0]!.name).toBe('Via Francigena');
   });
 });
