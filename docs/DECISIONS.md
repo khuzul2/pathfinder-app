@@ -237,3 +237,20 @@ route can be rebuilt through chosen shelters deterministically and reversibly (t
 are normal, draggable/removable stops); no reactive reroute loop. A fully-automatic variant, if
 wanted, can layer on top by calling the same pure function once per settle. The same insertion core
 will back the "water stops" option (P10-3).
+
+## ADR-019 — Community trails: Waymarked Trails for search + geometry; import as re-snapped stops
+**Status:** Accepted (2026-07-15). **Context:** users want to search named/community hiking routes
+(e.g. TransLagorai, Alta Via 1) and adopt one as their route. **Decisions:** (1) **Source =
+Waymarked Trails API** — keyless and CORS-open (callable browser-direct, like Overpass/RainViewer),
+with true **fuzzy name search** (trigram) that raw OSM/Overpass can't match, plus rich metadata
+(ref, itinerary, operator) and it's already our trail-tile provider. **Wikiloc was dropped** (it
+issues no public API keys). Wanderer.to + Overpass are under evaluation as *additional* sources.
+(2) **Geometry** comes from the same `details/relation/{id}?geometry=geojson` — a superroute tree
+whose leaf `ways` are Web Mercator LineStrings; `flattenTrailGeometry` walks the `main` chain
+(skipping `appendices`) and `mercatorToLngLat` reprojects to WGS84 (pure + tested). (3) **"Make this
+your hike" = import as stops, not a frozen track** — the polyline is downsampled to ≤28 on-route
+stops and set as the waypoints, so the normal ORS pipeline re-snaps it. This enriches a bare 2-D
+track with **elevation + Tobler time**, keeps it **editable** (drag/insert/overnight/export), and
+avoids a special "imported track" mode. **Consequences:** faithful-enough routes that behave like
+any other; a slight ORS re-snap divergence is possible on very long hikes (acceptable, and the
+elevation enrichment is worth it). A high-fidelity "keep exact GPX track" mode remains a future option.
