@@ -113,7 +113,13 @@ export async function requestPoisDirect(bbox: Bbox, signal?: AbortSignal): Promi
     `[out:json][timeout:25];(` +
     `node["tourism"="alpine_hut"]${b};` +
     `node["tourism"="camp_site"]${b};` +
+    `node["tourism"="hotel"]${b};` +
+    `node["tourism"="guest_house"]${b};` +
+    `node["tourism"="viewpoint"]${b};` +
     `node["natural"="spring"]${b};` +
+    `node["natural"="peak"]${b};` +
+    `node["natural"="waterfall"]${b};` +
+    `node["waterway"="waterfall"]${b};` +
     `);out body;`;
   try {
     const res = await fetch(OVERPASS_URL, {

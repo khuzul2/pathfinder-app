@@ -124,7 +124,13 @@ export async function fetchPois(bbox: BboxQuery): Promise<unknown> {
     `[out:json][timeout:25];(` +
     `node["tourism"="alpine_hut"]${b};` +
     `node["tourism"="camp_site"]${b};` +
+    `node["tourism"="hotel"]${b};` +
+    `node["tourism"="guest_house"]${b};` +
+    `node["tourism"="viewpoint"]${b};` +
     `node["natural"="spring"]${b};` +
+    `node["natural"="peak"]${b};` +
+    `node["natural"="waterfall"]${b};` +
+    `node["waterway"="waterfall"]${b};` +
     `);out body;`;
   // Overpass sets its own [timeout:25]; give the socket a little more headroom.
   const res = await fetchWithTimeout(

@@ -196,7 +196,18 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   pois: [],
   setPois: (pois) => set({ pois }),
-  poiFilters: { alpine_hut: true, camp_site: true, spring: true },
+  // The three core categories show by default; the rest are opt-in via the layer toggles so the
+  // map isn't flooded (peaks especially are dense in the Alps).
+  poiFilters: {
+    alpine_hut: true,
+    camp_site: true,
+    hotel: false,
+    guesthouse: false,
+    spring: true,
+    peak: false,
+    viewpoint: false,
+    waterfall: false,
+  },
   togglePoiFilter: (kind) =>
     set((state) => ({ poiFilters: { ...state.poiFilters, [kind]: !state.poiFilters[kind] } })),
 

@@ -1,16 +1,46 @@
 import { OverpassResponseSchema } from '../contracts/overpass';
 import type { Shelter } from './slicing';
 
-export type PoiKind = 'alpine_hut' | 'camp_site' | 'spring';
+export type PoiKind =
+  | 'alpine_hut'
+  | 'camp_site'
+  | 'hotel'
+  | 'guesthouse'
+  | 'spring'
+  | 'peak'
+  | 'viewpoint'
+  | 'waterfall';
 
 /** Display metadata per POI category (marker icon/color, legend + filter labels). */
 export const POI_META: Readonly<Record<PoiKind, { label: string; icon: string; color: string }>> = {
   alpine_hut: { label: 'Mountain hut', icon: '🏠', color: '#0F9D58' },
   camp_site: { label: 'Campsite', icon: '⛺', color: '#4285F4' },
+  hotel: { label: 'Hotel', icon: '🏨', color: '#7E57C2' },
+  guesthouse: { label: 'Guesthouse / B&B', icon: '🛏️', color: '#AB47BC' },
   spring: { label: 'Water source', icon: '💧', color: '#00A3BF' },
+  peak: { label: 'Peak', icon: '⛰️', color: '#8D6E63' },
+  viewpoint: { label: 'Viewpoint', icon: '🔭', color: '#F9AB00' },
+  waterfall: { label: 'Waterfall', icon: '💦', color: '#26A69A' },
 };
 
-export const POI_KINDS: readonly PoiKind[] = ['alpine_hut', 'camp_site', 'spring'];
+export const POI_KINDS: readonly PoiKind[] = [
+  'alpine_hut',
+  'camp_site',
+  'hotel',
+  'guesthouse',
+  'spring',
+  'peak',
+  'viewpoint',
+  'waterfall',
+];
+
+/** Categories that can serve as an overnight stop for the day-slicer. */
+const OVERNIGHT_KINDS: ReadonlySet<PoiKind> = new Set<PoiKind>([
+  'alpine_hut',
+  'camp_site',
+  'hotel',
+  'guesthouse',
+]);
 
 export interface Poi {
   id: string;
@@ -28,9 +58,21 @@ export interface Bbox {
 }
 
 function kindFor(tags: Record<string, string>): PoiKind | null {
-  if (tags.tourism === 'alpine_hut') return 'alpine_hut';
-  if (tags.tourism === 'camp_site') return 'camp_site';
+  switch (tags.tourism) {
+    case 'alpine_hut':
+      return 'alpine_hut';
+    case 'camp_site':
+      return 'camp_site';
+    case 'hotel':
+      return 'hotel';
+    case 'guest_house':
+      return 'guesthouse';
+    case 'viewpoint':
+      return 'viewpoint';
+  }
   if (tags.natural === 'spring') return 'spring';
+  if (tags.natural === 'peak') return 'peak';
+  if (tags.natural === 'waterfall' || tags.waterway === 'waterfall') return 'waterfall';
   return null;
 }
 
@@ -47,10 +89,10 @@ export function parseOverpassPois(data: unknown): Poi[] {
   return pois;
 }
 
-/** Only overnight-capable POIs (huts + campsites) are valid nightover stops. */
+/** Only overnight-capable POIs (huts, campsites, hotels, guesthouses) are valid nightover stops. */
 export function sheltersFrom(pois: readonly Poi[]): Shelter[] {
   return pois
-    .filter((p) => p.kind === 'alpine_hut' || p.kind === 'camp_site')
+    .filter((p) => OVERNIGHT_KINDS.has(p.kind))
     .map((p) => ({ id: p.id, lng: p.lng, lat: p.lat, name: p.name, kind: p.kind }));
 }
 

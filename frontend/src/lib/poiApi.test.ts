@@ -26,6 +26,75 @@ describe('parseOverpassPois', () => {
   });
 });
 
+describe('parseOverpassPois — extended categories', () => {
+  const extended = {
+    version: 0.6,
+    generator: 'test',
+    elements: [
+      {
+        type: 'node',
+        id: 1,
+        lat: 47.1,
+        lon: 11.1,
+        tags: { tourism: 'hotel', name: 'Hotel Alpina' },
+      },
+      {
+        type: 'node',
+        id: 2,
+        lat: 47.2,
+        lon: 11.2,
+        tags: { tourism: 'guest_house', name: 'Gasthof Rose' },
+      },
+      {
+        type: 'node',
+        id: 3,
+        lat: 47.3,
+        lon: 11.3,
+        tags: { natural: 'peak', name: 'Hohe Warte', ele: '2780' },
+      },
+      {
+        type: 'node',
+        id: 4,
+        lat: 47.4,
+        lon: 11.4,
+        tags: { tourism: 'viewpoint', name: 'Panorama' },
+      },
+      {
+        type: 'node',
+        id: 5,
+        lat: 47.5,
+        lon: 11.5,
+        tags: { natural: 'waterfall', name: 'Stuiben' },
+      },
+      {
+        type: 'node',
+        id: 6,
+        lat: 47.6,
+        lon: 11.6,
+        tags: { waterway: 'waterfall', name: 'Krimml' },
+      },
+    ],
+  };
+
+  it('maps hotels, guesthouses, peaks, viewpoints, and waterfalls (both waterfall tags)', () => {
+    const pois = parseOverpassPois(extended);
+    expect(pois.map((p) => p.kind).sort()).toEqual([
+      'guesthouse',
+      'hotel',
+      'peak',
+      'viewpoint',
+      'waterfall',
+      'waterfall',
+    ]);
+    expect(pois.find((p) => p.kind === 'peak')?.name).toBe('Hohe Warte');
+  });
+
+  it('counts hotels + guesthouses as overnight shelters, but not peaks/viewpoints/waterfalls', () => {
+    const shelters = sheltersFrom(parseOverpassPois(extended));
+    expect(shelters.map((s) => s.kind).sort()).toEqual(['guesthouse', 'hotel']);
+  });
+});
+
 describe('requestPois', () => {
   const server = setupServer(http.get('*/api/pois', () => HttpResponse.json(overpassFixture)));
   beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));

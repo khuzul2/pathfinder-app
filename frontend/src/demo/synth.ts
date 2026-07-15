@@ -85,6 +85,11 @@ export function synthPoisResponse(bbox: DemoBbox): Record<string, unknown> {
     [0.45, 0.7, 'camp_site', 'Meadow Campsite', { tourism: 'camp_site' }],
     [0.7, 0.25, 'camp_site', 'Lakeside Camp', { tourism: 'camp_site' }],
     [0.5, 0.5, 'spring', 'Fresh Spring', { natural: 'spring' }],
+    [0.55, 0.4, 'hotel', 'Demo Berghotel', { tourism: 'hotel' }],
+    [0.35, 0.6, 'guesthouse', 'Demo Gasthof', { tourism: 'guest_house' }],
+    [0.8, 0.5, 'peak', 'Demo Spitze', { natural: 'peak', ele: '2412' }],
+    [0.65, 0.65, 'viewpoint', 'Demo Aussichtspunkt', { tourism: 'viewpoint' }],
+    [0.25, 0.45, 'waterfall', 'Demo Wasserfall', { natural: 'waterfall' }],
   ];
   const elements = spec.map(([ty, tx, _kind, name, baseTags], i) => ({
     type: 'node',
