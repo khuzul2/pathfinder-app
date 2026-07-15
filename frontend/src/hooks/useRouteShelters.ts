@@ -8,17 +8,16 @@ import { corridorTiles } from '../lib/routeCorridor';
 /** Overnight kinds + water so both the day planner and the "add water stops" action are fed. */
 const CORRIDOR_KINDS: readonly PoiKind[] = [...OVERNIGHT_POI_KINDS, 'spring'];
 
-/** Bounds how many upstream queries a long route triggers, and how many run at once (Overpass fair-use). */
-const MAX_TILES = 10;
+/** Query budget: bounded tiles, each ~1° so Overpass answers fast, a couple in flight (fair-use). */
+const MAX_TILES = 16;
+const MAX_TILE_SPAN_DEG = 1.0;
 const TILE_CONCURRENCY = 2;
-const TILE_SPAN_DEG = 1.5;
 
 function round2(b: Bbox): Bbox {
   const r = (n: number) => Math.round(n * 100) / 100;
   return { south: r(b.south), west: r(b.west), north: r(b.north), east: r(b.east) };
 }
 
-/** Run `fn` over items with at most `limit` in flight at once. */
 async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) => Promise<R>) {
   const results: R[] = new Array(items.length);
   let next = 0;
@@ -33,11 +32,12 @@ async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) 
 }
 
 /**
- * Fetches overnight-capable POIs (huts, campsites, hotels, guesthouses) for the route corridor,
- * TILED into a small set of bounding boxes rather than one giant bbox. A single bbox over a very
- * long route (e.g. the Via Francigena) spans a whole continent and times out on Overpass, returning
- * nothing; tiling keeps each query small and fast while covering the whole path. Tiles are capped
- * and fetched with limited concurrency so this stays cheap even for a 2000 km route.
+ * Fetches overnight-capable POIs (huts, campsites, hotels, guesthouses) + water sources along the
+ * route corridor, TILED into bounding boxes each bounded to ~1°. A single bbox over a long diagonal
+ * route (e.g. the Via Francigena) is continental and times out, leaving whole legs shelterless;
+ * size-bounded tiles keep every Overpass query small + fast while covering the whole path. Tiles are
+ * capped and fetched with limited concurrency; a failed tile is dropped. Results are partitioned
+ * into shelters + springs, and the fetch state drives the overnight feedback indicator.
  */
 export function useRouteShelters() {
   const route = useAppStore((s) => s.route);
@@ -52,7 +52,11 @@ export function useRouteShelters() {
   const tiles = useMemo(
     () =>
       route
-        ? corridorTiles(route.points, { maxTiles: MAX_TILES, padDeg, tileSpanDeg: TILE_SPAN_DEG })
+        ? corridorTiles(route.points, {
+            maxTiles: MAX_TILES,
+            padDeg,
+            maxTileSpanDeg: MAX_TILE_SPAN_DEG,
+          })
         : [],
     [route, padDeg],
   );
