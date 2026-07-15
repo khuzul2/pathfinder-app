@@ -123,14 +123,17 @@ function importHike(id: number): void {
   const hike = store.communityHikes.find((h) => h.id === id);
   if (!hike || hike.points.length < 2) return;
   const stops = sampleWaypoints(hike.points, TRAIL_IMPORT_STOPS, hike.name);
-  void importHikeRoute(hike.points, store.routingOptions.avoidRoads).then((analysis) => {
-    const s = useAppStore.getState();
-    if (analysis) s.setImportedRoute(analysis, stops);
-    else {
-      s.setWaypoints(stops);
-      s.requestMapFocus();
-    }
-  });
+  store.setBusy(`Importing “${hike.name}”…`);
+  void importHikeRoute(hike.points, store.routingOptions.avoidRoads)
+    .then((analysis) => {
+      const s = useAppStore.getState();
+      if (analysis) s.setImportedRoute(analysis, stops);
+      else {
+        s.setWaypoints(stops);
+        s.requestMapFocus();
+      }
+    })
+    .finally(() => useAppStore.getState().setBusy(null));
 }
 
 /** Hover-tooltip DOM for a community hike: its name + the call to action. */

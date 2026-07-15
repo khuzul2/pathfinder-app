@@ -1,5 +1,6 @@
 import { MapCanvas } from './components/MapCanvas';
 import { MapSearchControl } from './components/MapSearchControl';
+import { BusyIndicator } from './components/BusyIndicator';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Attribution } from './components/Attribution';
 import { Sidebar } from './components/Sidebar';
@@ -38,6 +39,7 @@ export function App() {
       <div className="relative flex-1">
         <MapCanvas />
 
+        <BusyIndicator />
         <MapSearchControl />
 
         <div className="absolute right-4 top-4 z-10 flex gap-2">

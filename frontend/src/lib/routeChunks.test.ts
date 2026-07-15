@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chunkWaypoints } from './routeChunks';
+import { chunkWaypoints, decimate } from './routeChunks';
 
 describe('chunkWaypoints', () => {
   it('returns a single chunk when within the limit', () => {
@@ -23,5 +23,19 @@ describe('chunkWaypoints', () => {
   it('drops a degenerate (<2 point) input', () => {
     expect(chunkWaypoints([1], 48)).toEqual([]);
     expect(chunkWaypoints([], 48)).toEqual([]);
+  });
+});
+
+describe('decimate', () => {
+  it('thins to at most max, keeping the ends', () => {
+    const pts = Array.from({ length: 1000 }, (_, i) => i);
+    const out = decimate(pts, 100);
+    expect(out).toHaveLength(100);
+    expect(out[0]).toBe(0);
+    expect(out.at(-1)).toBe(999);
+  });
+
+  it('returns the input unchanged when already within max', () => {
+    expect(decimate([1, 2, 3], 100)).toEqual([1, 2, 3]);
   });
 });

@@ -50,6 +50,7 @@ export function SearchBox() {
   const setWaypoints = useAppStore((s) => s.setWaypoints);
   const setImportedRoute = useAppStore((s) => s.setImportedRoute);
   const requestMapFocus = useAppStore((s) => s.requestMapFocus);
+  const setBusy = useAppStore((s) => s.setBusy);
 
   const { data: places = [], isFetching: placesFetching } = usePlaceSearch(
     debounced,
@@ -76,6 +77,7 @@ export function SearchBox() {
 
   const pickTrail = async (hit: TrailHit) => {
     setLoadingTrailId(hit.id);
+    setBusy(`Importing “${hit.name}”…`);
     try {
       const line = await fetchTrailPolyline(hit.id);
       const stops = sampleWaypoints(line, TRAIL_IMPORT_STOPS, hit.name);
@@ -93,6 +95,7 @@ export function SearchBox() {
       /* leave the list open; the user can retry or pick another */
     } finally {
       setLoadingTrailId(null);
+      setBusy(null);
     }
   };
 

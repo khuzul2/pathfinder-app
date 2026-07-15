@@ -65,6 +65,10 @@ export interface AppState {
   routing: boolean;
   setRouting: (routing: boolean) => void;
 
+  /** A status message for a long-running action (e.g. importing a trail); null when idle. */
+  busy: string | null;
+  setBusy: (message: string | null) => void;
+
   /** Elevation-chart ↔ map hover-sync: index into route.points (null = no hover). */
   hoverIndex: number | null;
   setHoverIndex: (index: number | null) => void;
@@ -238,6 +242,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   routing: false,
   setRouting: (routing) => set({ routing }),
+
+  busy: null,
+  setBusy: (busy) => set({ busy }),
 
   hoverIndex: null,
   setHoverIndex: (index) => set({ hoverIndex: index }),

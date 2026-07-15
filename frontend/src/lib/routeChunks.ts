@@ -15,3 +15,16 @@ export function chunkWaypoints<T>(points: readonly T[], maxPerChunk: number): T[
   }
   return chunks;
 }
+
+/**
+ * Evenly thin a list to at most `max` items (keeping the ends). Stitched long-distance routes can
+ * carry tens of thousands of vertices; capping them keeps per-render geometry scans (nearest-vertex,
+ * shelter matching, line rendering) off the main thread's critical path so the UI stays responsive.
+ */
+export function decimate<T>(items: readonly T[], max: number): T[] {
+  if (max < 2 || items.length <= max) return [...items];
+  const out: T[] = [];
+  const step = (items.length - 1) / (max - 1);
+  for (let i = 0; i < max; i++) out.push(items[Math.round(i * step)] as T);
+  return out;
+}
