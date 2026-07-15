@@ -254,3 +254,20 @@ track with **elevation + Tobler time**, keeps it **editable** (drag/insert/overn
 avoids a special "imported track" mode. **Consequences:** faithful-enough routes that behave like
 any other; a slight ORS re-snap divergence is possible on very long hikes (acceptable, and the
 elevation enrichment is worth it). A high-fidelity "keep exact GPX track" mode remains a future option.
+
+## ADR-020 — Wanderer (community trip reports) deferred to the production backend (CORS)
+**Status:** Accepted (2026-07-15), extends ADR-019. **Context:** we evaluated Wanderer.to as an
+*additional* community-trails source for real user trip reports (the niche Wikiloc would have filled),
+since Waymarked Trails only covers OSM-mapped named routes, not user GPX uploads. **Spike findings
+(demo.wanderer.to):** (1) `GET /api/v1/trail` returns 200 JSON with **no auth** — anonymous public
+reads work; (2) records carry **inline geometry** (encoded `polyline` + a `gpx` blob) plus rich
+metadata (distance, elevation, difficulty, bbox, photos); (3) it's a Go REST API + Meilisearch,
+OpenAPI-documented. **Blocker:** the instance sends **no CORS header** and its `OPTIONS` preflight
+is 405, so it **cannot be called browser-direct** from the static GitHub Pages demo (unlike Waymarked
+Trails, which sends `ACAO: *`). **Decision:** **defer Wanderer to the production Cloud Run
+deployment**, where the existing backend proxy fetches it server-side (no CORS involved). We do NOT
+add it to the browser-direct demo. Self-hosting a CORS-enabled Wanderer instance remains an
+alternative if we want it sooner (fits the no-lock-in ethos). **Consequences:** the demo keeps
+Waymarked Trails for named/community routes (search + interactive overlay) and loses nothing by
+waiting; Wanderer slots in behind `/api/*` when the backend ships, adding true user trip reports.
+**Wikiloc stays dropped** (no public API keys).
