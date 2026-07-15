@@ -5,7 +5,7 @@
  */
 export type OrsProfile = 'foot-hiking' | 'foot-walking';
 
-export type StayType = 'hut' | 'camp' | 'bivvy';
+export type StayType = 'hut' | 'camp' | 'hotel' | 'guesthouse' | 'bivvy';
 
 export interface RoutingOptions {
   /** Prefer trails/paths, avoiding vehicle-traffic roads as much as possible. */
@@ -19,7 +19,7 @@ export interface RoutingOptions {
 export const DEFAULT_ROUTING_OPTIONS: RoutingOptions = {
   avoidRoads: true,
   autoOvernight: true,
-  stayTypes: { hut: true, camp: true, bivvy: false },
+  stayTypes: { hut: true, camp: true, hotel: false, guesthouse: false, bivvy: false },
 };
 
 /** Options passed down the data layer for a single route request. */

@@ -1,5 +1,12 @@
 import { toRouteAnalysis, toRouteAnalyses } from '../lib/routeApi';
-import { parseOverpassPois, type Poi, type Bbox } from '../lib/poiApi';
+import {
+  parseOverpassPois,
+  buildOverpassQuery,
+  POI_KINDS,
+  type Poi,
+  type Bbox,
+  type PoiKind,
+} from '../lib/poiApi';
 import { RainViewerMapsSchema, type RainViewerMaps } from '../contracts/rainviewer';
 import { synthRouteResponse, synthPoisResponse } from './synth';
 import type { RouteAnalysis } from '../lib/route';
@@ -107,20 +114,13 @@ export async function requestRouteDirect(
   return (await requestRoutesDirect(waypoints, options, signal))[0] as RouteAnalysis;
 }
 
-export async function requestPoisDirect(bbox: Bbox, signal?: AbortSignal): Promise<Poi[]> {
+export async function requestPoisDirect(
+  bbox: Bbox,
+  kinds: readonly PoiKind[] = POI_KINDS,
+  signal?: AbortSignal,
+): Promise<Poi[]> {
   const b = `(${bbox.south},${bbox.west},${bbox.north},${bbox.east})`;
-  const query =
-    `[out:json][timeout:25];(` +
-    `node["tourism"="alpine_hut"]${b};` +
-    `node["tourism"="camp_site"]${b};` +
-    `node["tourism"="hotel"]${b};` +
-    `node["tourism"="guest_house"]${b};` +
-    `node["tourism"="viewpoint"]${b};` +
-    `node["natural"="spring"]${b};` +
-    `node["natural"="peak"]${b};` +
-    `node["natural"="waterfall"]${b};` +
-    `node["waterway"="waterfall"]${b};` +
-    `);out body;`;
+  const query = buildOverpassQuery(b, kinds);
   try {
     const res = await fetch(OVERPASS_URL, {
       method: 'POST',
@@ -132,7 +132,8 @@ export async function requestPoisDirect(bbox: Bbox, signal?: AbortSignal): Promi
     return parseOverpassPois(await res.json());
   } catch (err) {
     if (signal?.aborted) throw err;
-    return parseOverpassPois(synthPoisResponse(bbox));
+    // Keyless-demo fallback: synthetic POIs, narrowed to the requested categories.
+    return parseOverpassPois(synthPoisResponse(bbox)).filter((p) => kinds.includes(p.kind));
   }
 }
 

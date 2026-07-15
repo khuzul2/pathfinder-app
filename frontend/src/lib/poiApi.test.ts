@@ -4,7 +4,7 @@ import { setupServer } from 'msw/node';
 import { http, HttpResponse } from 'msw';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { parseOverpassPois, sheltersFrom, requestPois } from './poiApi';
+import { parseOverpassPois, sheltersFrom, requestPois, buildOverpassQuery } from './poiApi';
 
 const overpassFixture = JSON.parse(
   readFileSync(resolve(process.cwd(), 'test/fixtures/overpass-poi.json'), 'utf-8'),
@@ -92,6 +92,22 @@ describe('parseOverpassPois — extended categories', () => {
   it('counts hotels + guesthouses as overnight shelters, but not peaks/viewpoints/waterfalls', () => {
     const shelters = sheltersFrom(parseOverpassPois(extended));
     expect(shelters.map((s) => s.kind).sort()).toEqual(['guesthouse', 'hotel']);
+  });
+});
+
+describe('buildOverpassQuery', () => {
+  it('queries only the requested categories', () => {
+    const q = buildOverpassQuery('(1,2,3,4)', ['alpine_hut', 'spring']);
+    expect(q).toContain('node["tourism"="alpine_hut"](1,2,3,4);');
+    expect(q).toContain('node["natural"="spring"](1,2,3,4);');
+    expect(q).not.toContain('peak');
+    expect(q).not.toContain('viewpoint');
+  });
+
+  it('expands waterfall into both tag schemes', () => {
+    const q = buildOverpassQuery('(1,2,3,4)', ['waterfall']);
+    expect(q).toContain('node["natural"="waterfall"](1,2,3,4);');
+    expect(q).toContain('node["waterway"="waterfall"](1,2,3,4);');
   });
 });
 

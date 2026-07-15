@@ -41,6 +41,8 @@ function Toggle({
 const STAYS: { kind: StayType; label: string }[] = [
   { kind: 'hut', label: 'Huts' },
   { kind: 'camp', label: 'Campsites' },
+  { kind: 'hotel', label: 'Hotels' },
+  { kind: 'guesthouse', label: 'B&Bs' },
   { kind: 'bivvy', label: 'Bivvy' },
 ];
 

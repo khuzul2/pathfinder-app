@@ -6,6 +6,7 @@ import { MobileSheet } from './components/MobileSheet';
 import { useApplyTheme } from './hooks/useApplyTheme';
 import { useRoute } from './hooks/useRoute';
 import { usePois } from './hooks/usePois';
+import { useRouteShelters } from './hooks/useRouteShelters';
 import { useRadar } from './hooks/useRadar';
 import { useDayPlan } from './hooks/useDayPlan';
 import { useRouteAutosave } from './hooks/useRouteAutosave';
@@ -20,6 +21,7 @@ export function App() {
   useHydrateRoutes(); // load saved routes from storage on first mount
   useRoute(); // fetches + analyzes the route whenever waypoints change
   usePois(); // fetches POIs for the viewport (zoom-gated)
+  useRouteShelters(); // fetches overnight shelters along the whole route (viewport-independent)
   useRadar(); // fetches the radar frame index when the overlay is on
   useDayPlan(); // recomputes the multi-day slice plan
   useRouteAutosave(); // autosaves the working route into "My routes"

@@ -74,6 +74,9 @@ export interface AppState {
   // POI + multi-day slicing (Phase 4)
   pois: Poi[];
   setPois: (pois: Poi[]) => void;
+  /** Overnight-capable POIs along the whole route corridor (drives the day planner, viewport-independent). */
+  routeShelters: Poi[];
+  setRouteShelters: (pois: Poi[]) => void;
   poiFilters: Record<PoiKind, boolean>;
   togglePoiFilter: (kind: PoiKind) => void;
 
@@ -199,6 +202,8 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   pois: [],
   setPois: (pois) => set({ pois }),
+  routeShelters: [],
+  setRouteShelters: (routeShelters) => set({ routeShelters }),
   // The three core categories show by default; the rest are opt-in via the layer toggles so the
   // map isn't flooded (peaks especially are dense in the Alps).
   poiFilters: {

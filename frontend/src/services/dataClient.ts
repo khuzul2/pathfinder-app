@@ -1,5 +1,5 @@
 import { requestRoutes } from '../lib/routeApi';
-import { requestPois, type Poi, type Bbox } from '../lib/poiApi';
+import { requestPois, POI_KINDS, type Poi, type Bbox, type PoiKind } from '../lib/poiApi';
 import { RainViewerMapsSchema, type RainViewerMaps } from '../contracts/rainviewer';
 import { requestRoutesDirect, requestPoisDirect, requestRadarDirect } from '../demo/directApi';
 import type { LngLat } from '../lib/geo';
@@ -24,8 +24,12 @@ export function getRoutes(
     : requestRoutes(waypoints, options, signal);
 }
 
-export function getPois(bbox: Bbox, signal?: AbortSignal): Promise<Poi[]> {
-  return DEMO ? requestPoisDirect(bbox, signal) : requestPois(bbox, signal);
+export function getPois(
+  bbox: Bbox,
+  kinds: readonly PoiKind[] = POI_KINDS,
+  signal?: AbortSignal,
+): Promise<Poi[]> {
+  return DEMO ? requestPoisDirect(bbox, kinds, signal) : requestPois(bbox, kinds, signal);
 }
 
 export async function getRadar(signal?: AbortSignal): Promise<RainViewerMaps> {

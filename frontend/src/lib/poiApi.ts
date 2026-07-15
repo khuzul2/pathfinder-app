@@ -96,12 +96,50 @@ export function sheltersFrom(pois: readonly Poi[]): Shelter[] {
     .map((p) => ({ id: p.id, lng: p.lng, lat: p.lat, name: p.name, kind: p.kind }));
 }
 
-export async function requestPois(bbox: Bbox, signal?: AbortSignal): Promise<Poi[]> {
+/** Overpass node selectors per category (waterfall spans two tag schemes). */
+const OVERPASS_SELECTORS: Readonly<Record<PoiKind, readonly string[]>> = {
+  alpine_hut: ['node["tourism"="alpine_hut"]'],
+  camp_site: ['node["tourism"="camp_site"]'],
+  hotel: ['node["tourism"="hotel"]'],
+  guesthouse: ['node["tourism"="guest_house"]'],
+  spring: ['node["natural"="spring"]'],
+  peak: ['node["natural"="peak"]'],
+  viewpoint: ['node["tourism"="viewpoint"]'],
+  waterfall: ['node["natural"="waterfall"]', 'node["waterway"="waterfall"]'],
+};
+
+/** POI categories that can serve as overnight stops (used for route-corridor shelter fetches). */
+export const OVERNIGHT_POI_KINDS: readonly PoiKind[] = [
+  'alpine_hut',
+  'camp_site',
+  'hotel',
+  'guesthouse',
+];
+
+/**
+ * Build an Overpass QL query for the given bbox suffix (e.g. `"(s,w,n,e)"`) and POI kinds. Only the
+ * requested categories are queried — fetching peaks (dense in the Alps) when they're hidden would
+ * bloat the response and slow the map, so callers pass just the categories they need.
+ */
+export function buildOverpassQuery(bboxSuffix: string, kinds: readonly PoiKind[]): string {
+  const body = kinds
+    .flatMap((k) => OVERPASS_SELECTORS[k])
+    .map((sel) => `${sel}${bboxSuffix};`)
+    .join('');
+  return `[out:json][timeout:25];(${body});out body;`;
+}
+
+export async function requestPois(
+  bbox: Bbox,
+  kinds: readonly PoiKind[] = POI_KINDS,
+  signal?: AbortSignal,
+): Promise<Poi[]> {
   const qs = new URLSearchParams({
     south: String(bbox.south),
     west: String(bbox.west),
     north: String(bbox.north),
     east: String(bbox.east),
+    kinds: kinds.join(','),
   });
   const res = await fetch(`/api/pois?${qs.toString()}`, { signal });
   if (!res.ok) throw new Error(`POI request failed (${res.status})`);
