@@ -1,5 +1,6 @@
 import { useAppStore } from '../state/store';
 import { formatDistance, formatDuration } from '../lib/route';
+import { insertOvernightStops } from '../lib/overnightStops';
 
 const HOURS_CHOICES = [4, 5, 6, 7, 8];
 
@@ -15,10 +16,19 @@ export function DaySlicer() {
   const plan = useAppStore((s) => s.slicePlan);
   const targetHours = useAppStore((s) => s.targetHours);
   const setTargetHours = useAppStore((s) => s.setTargetHours);
+  const waypoints = useAppStore((s) => s.waypoints);
+  const setWaypoints = useAppStore((s) => s.setWaypoints);
 
   if (!route) return null;
   const days = plan?.days ?? [];
   const multiDay = days.length > 1;
+
+  // Preview inserting the chosen overnight shelters as stops so the route rebuilds THROUGH them.
+  // Only offered when it would actually add a stop (self-hides once the route already passes
+  // through them — a one-shot action, never a reactive loop).
+  const overnight =
+    plan && waypoints.length >= 2 ? insertOvernightStops(route.points, waypoints, plan) : null;
+  const canRouteThrough = (overnight?.inserted ?? 0) > 0;
 
   return (
     <section
@@ -68,6 +78,17 @@ export function DaySlicer() {
             </li>
           ))}
         </ol>
+      )}
+
+      {canRouteThrough && (
+        <button
+          type="button"
+          onClick={() => setWaypoints(overnight!.waypoints)}
+          className="mt-2 w-full rounded-md border border-trail-green bg-trail-green/10 px-2 py-1.5 text-xs font-semibold text-trail-green transition-colors hover:bg-trail-green/20"
+        >
+          ➕ Route through {overnight!.inserted} overnight stop
+          {overnight!.inserted > 1 ? 's' : ''}
+        </button>
       )}
     </section>
   );

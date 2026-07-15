@@ -30,6 +30,8 @@ export interface AppState {
   // Routing (Phase 3, named stops Phase 8)
   waypoints: Waypoint[];
   addWaypoint: (point: Waypoint) => void;
+  /** Replace the whole stop list at once (e.g. auto-inserting overnight stops). */
+  setWaypoints: (points: Waypoint[]) => void;
   insertWaypoint: (index: number, point: Waypoint) => void;
   updateWaypoint: (index: number, point: Waypoint) => void;
   removeWaypoint: (index: number) => void;
@@ -122,6 +124,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   waypoints: [],
   addWaypoint: (point) => set((state) => ({ waypoints: [...state.waypoints, point] })),
+  setWaypoints: (points) => set({ waypoints: points }),
   insertWaypoint: (index, point) =>
     set((state) => {
       const next = [...state.waypoints];

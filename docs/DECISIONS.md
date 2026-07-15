@@ -217,3 +217,23 @@ double-click-zoom disabled), snapping to a POI within ~100 m or reverse-geocodin
 name so the stop list shows names, not raw coordinates. (4) The stop list is **drag-and-drop
 reorderable** (↑/↓ retained for accessibility). **Consequences:** clearer, more predictable map
 UX; difficulty is legend-only on the map (a colored overlay could return as a future option).
+
+## ADR-018 — Routing THROUGH overnight stops is a one-shot insert, not a reactive toggle
+**Status:** Accepted (2026-07-15), extends ADR-015. **Context:** `autoOvernight` (ADR-015) only
+sliced the route into days and annotated each day's nearest shelter — the routed *path* still went
+straight through the user's stops, not through the shelters. Users want the path rebuilt so it
+actually passes through the overnight stops. **Problem:** doing this reactively (a toggle that
+auto-inserts shelters) creates a feedback loop — inserting stops reroutes, which re-slices, which
+re-picks shelters, which re-inserts — causing flicker and fighting the user's own edits.
+**Decision:** expose it as an **explicit one-shot action** in the day panel. `insertOvernightStops`
+(pure, in `lib/overnightStops.ts`) takes the current route + stops + slice plan and returns the
+stop list with each non-final day's real shelter (bivvy/wild-camps excluded — they already sit on
+the route) inserted between the two stops that bracket it along the route; the normal debounced
+route request then rebuilds through them in a single pass. It is **idempotent** — a shelter already
+covered by a nearby stop (≤40 m) is skipped, so the "Route through N overnight stops" button
+self-hides once the route passes through them and pressing it can never loop. `waypoints` stays the
+single source of truth (the action just replaces the list via `setWaypoints`). **Consequences:** the
+route can be rebuilt through chosen shelters deterministically and reversibly (the inserted stops
+are normal, draggable/removable stops); no reactive reroute loop. A fully-automatic variant, if
+wanted, can layer on top by calling the same pure function once per settle. The same insertion core
+will back the "water stops" option (P10-3).
