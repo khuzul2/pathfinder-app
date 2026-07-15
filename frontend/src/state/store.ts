@@ -91,6 +91,19 @@ export interface AppState {
   viewportZoom: number;
   setViewport: (bbox: Bbox, zoom: number) => void;
 
+  /**
+   * The area viewport-bound layers (POIs, community hikes) are currently loaded for. Set by the
+   * "Search this area" control (or auto on first enable) rather than refetching on every pan/zoom.
+   */
+  dataArea: Bbox | null;
+  searchArea: () => void;
+  clearDataArea: () => void;
+  /** True while the respective viewport layer is fetching (drives the search control's spinner). */
+  poiLoading: boolean;
+  setPoiLoading: (loading: boolean) => void;
+  hikeLoading: boolean;
+  setHikeLoading: (loading: boolean) => void;
+
   /** Target moving hours per day for the slicer. */
   targetHours: number;
   setTargetHours: (hours: number) => void;
@@ -235,6 +248,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   viewportBbox: null,
   viewportZoom: 0,
   setViewport: (viewportBbox, viewportZoom) => set({ viewportBbox, viewportZoom }),
+
+  dataArea: null,
+  searchArea: () => set((state) => ({ dataArea: state.viewportBbox })),
+  clearDataArea: () => set({ dataArea: null }),
+  poiLoading: false,
+  setPoiLoading: (poiLoading) => set({ poiLoading }),
+  hikeLoading: false,
+  setHikeLoading: (hikeLoading) => set({ hikeLoading }),
 
   targetHours: SLICING.targetHoursPerDay,
   setTargetHours: (targetHours) => set({ targetHours }),

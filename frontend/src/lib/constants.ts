@@ -75,6 +75,12 @@ export const SAC_SCRAMBLE_GAMMA = 0.5;
 /** Overpass POI fetches are gated to viewports at/above this zoom (SPEC §3.1). */
 export const OVERPASS_MIN_ZOOM = 11;
 
+/**
+ * Below this zoom the visible area is too large to load viewport layers (POIs, community hikes)
+ * without pulling far too much data — the "Search this area" control shows a "zoom in" hint instead.
+ */
+export const LAYER_SEARCH_MIN_ZOOM = 9;
+
 /** Multi-day slicing defaults — TIME-based per product decision (DECISIONS ADR-002). */
 export const SLICING = {
   /** Target moving hours per day. */

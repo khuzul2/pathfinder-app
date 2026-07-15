@@ -30,14 +30,14 @@ function wrapper({ children }: { children: ReactNode }) {
 describe('usePois', () => {
   beforeEach(() => useAppStore.setState(initial, true));
 
-  it('does not fetch below the POI zoom threshold', () => {
-    useAppStore.setState({ viewportBbox: bbox, viewportZoom: 8 });
+  it('does not fetch until an area is committed via "Search this area"', () => {
+    useAppStore.setState({ viewportBbox: bbox, viewportZoom: 13, dataArea: null });
     renderHook(() => usePois(), { wrapper });
     expect(useAppStore.getState().pois).toEqual([]);
   });
 
-  it('fetches and stores POIs at/above the zoom threshold', async () => {
-    useAppStore.setState({ viewportBbox: bbox, viewportZoom: 13 });
+  it('fetches and stores POIs for the committed search area', async () => {
+    useAppStore.setState({ viewportBbox: bbox, viewportZoom: 13, dataArea: bbox });
     renderHook(() => usePois(), { wrapper });
     await waitFor(() => expect(useAppStore.getState().pois.length).toBe(3));
   });

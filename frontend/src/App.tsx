@@ -1,4 +1,5 @@
 import { MapCanvas } from './components/MapCanvas';
+import { MapSearchControl } from './components/MapSearchControl';
 import { ThemeToggle } from './components/ThemeToggle';
 import { Attribution } from './components/Attribution';
 import { Sidebar } from './components/Sidebar';
@@ -36,6 +37,8 @@ export function App() {
 
       <div className="relative flex-1">
         <MapCanvas />
+
+        <MapSearchControl />
 
         <div className="absolute right-4 top-4 z-10 flex gap-2">
           <ThemeToggle />
