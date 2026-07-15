@@ -4,6 +4,7 @@ import { useAppStore } from '../state/store';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
 import { usePlaceSearch } from '../hooks/usePlaceSearch';
 import { searchTrails, fetchTrailPolyline, type TrailHit } from '../services/waymarkedTrails';
+import { importHikeRoute } from '../services/trailImport';
 import { sampleWaypoints, TRAIL_IMPORT_STOPS } from '../lib/trailGeometry';
 import type { GeocodeResult } from '../lib/geocode';
 import type { Waypoint } from '../state/store';
@@ -44,8 +45,10 @@ export function SearchBox() {
 
   const waypoints = useAppStore((s) => s.waypoints);
   const viewportBbox = useAppStore((s) => s.viewportBbox);
+  const avoidRoads = useAppStore((s) => s.routingOptions.avoidRoads);
   const addWaypoint = useAppStore((s) => s.addWaypoint);
   const setWaypoints = useAppStore((s) => s.setWaypoints);
+  const setImportedRoute = useAppStore((s) => s.setImportedRoute);
   const requestMapFocus = useAppStore((s) => s.requestMapFocus);
 
   const { data: places = [], isFetching: placesFetching } = usePlaceSearch(
@@ -76,11 +79,16 @@ export function SearchBox() {
     try {
       const line = await fetchTrailPolyline(hit.id);
       const stops = sampleWaypoints(line, TRAIL_IMPORT_STOPS, hit.name);
-      if (stops.length >= 2) {
+      if (stops.length < 2) return;
+      // Faithful import: snap the real trail geometry (chunked); fall back to a sparse re-snap.
+      const analysis = await importHikeRoute(line, avoidRoads);
+      if (analysis) {
+        setImportedRoute(analysis, stops);
+      } else {
         setWaypoints(stops);
         requestMapFocus();
-        reset();
       }
+      reset();
     } catch {
       /* leave the list open; the user can retry or pick another */
     } finally {

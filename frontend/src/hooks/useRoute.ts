@@ -19,6 +19,7 @@ import { useDebouncedValue } from './useDebouncedValue';
 export function useRoute() {
   const waypoints = useAppStore((s) => s.waypoints);
   const avoidRoads = useAppStore((s) => s.routingOptions.avoidRoads);
+  const routeImported = useAppStore((s) => s.routeImported);
   const setAlternatives = useAppStore((s) => s.setAlternatives);
   const setRouteError = useAppStore((s) => s.setRouteError);
   const setRouting = useAppStore((s) => s.setRouting);
@@ -29,7 +30,8 @@ export function useRoute() {
     queryKey: ['route', debouncedWaypoints, avoidRoads],
     queryFn: ({ signal }) =>
       getRoutes(debouncedWaypoints, { profile: orsProfile(avoidRoads) }, signal),
-    enabled: debouncedWaypoints.length >= 2,
+    // An imported trail shows its own faithful geometry; don't re-route it until the user edits a stop.
+    enabled: debouncedWaypoints.length >= 2 && !routeImported,
     staleTime: 5 * 60_000,
     retry: (count, error) =>
       count < 2 && /fetch|unreachable|rate limit|network/i.test((error as Error).message),

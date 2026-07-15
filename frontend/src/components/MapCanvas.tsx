@@ -17,6 +17,7 @@ import type { Poi } from '../lib/poiApi';
 import { haversineMeters } from '../lib/geo';
 import { segmentForHover } from '../lib/routeInsert';
 import { sampleWaypoints, TRAIL_IMPORT_STOPS } from '../lib/trailGeometry';
+import { importHikeRoute } from '../services/trailImport';
 import { reverseGeocode } from '../services/geocodeClient';
 
 /** The subset of the lazy-loaded mapbox-gl default export we use. */
@@ -116,13 +117,20 @@ function buildInsertHandle(): HTMLDivElement {
   return el;
 }
 
-/** Adopt a community hike as the current route (imported as re-snapped stops so it stays editable). */
+/** Adopt a community hike as the current route: snap its real geometry faithfully, or fall back. */
 function importHike(id: number): void {
   const store = useAppStore.getState();
   const hike = store.communityHikes.find((h) => h.id === id);
   if (!hike || hike.points.length < 2) return;
-  store.setWaypoints(sampleWaypoints(hike.points, TRAIL_IMPORT_STOPS, hike.name));
-  store.requestMapFocus();
+  const stops = sampleWaypoints(hike.points, TRAIL_IMPORT_STOPS, hike.name);
+  void importHikeRoute(hike.points, store.routingOptions.avoidRoads).then((analysis) => {
+    const s = useAppStore.getState();
+    if (analysis) s.setImportedRoute(analysis, stops);
+    else {
+      s.setWaypoints(stops);
+      s.requestMapFocus();
+    }
+  });
 }
 
 /** Hover-tooltip DOM for a community hike: its name + the call to action. */

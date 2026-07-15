@@ -21,6 +21,8 @@ vi.mock('../services/waymarkedTrails', () => ({
     { lng: 1, lat: 1 },
   ]),
 }));
+// The faithful-import snap returns null here → the component falls back to setting sparse stops.
+vi.mock('../services/trailImport', () => ({ importHikeRoute: vi.fn(async () => null) }));
 
 const initial = useAppStore.getState();
 

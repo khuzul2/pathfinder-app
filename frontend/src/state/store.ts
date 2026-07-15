@@ -43,6 +43,11 @@ export interface AppState {
   route: RouteAnalysis | null;
   setRoute: (route: RouteAnalysis | null) => void;
 
+  /** True while showing a directly-imported (faithful) trail; any stop edit clears it so the router resumes. */
+  routeImported: boolean;
+  /** Adopt a pre-analyzed trail as the route (bypassing the router) with a sparse set of editable stops. */
+  setImportedRoute: (analysis: RouteAnalysis, waypoints: Waypoint[]) => void;
+
   /** Bumped to ask the map to (re)frame the current stops (center one, fit-bounds many). */
   mapFocusNonce: number;
   requestMapFocus: () => void;
@@ -146,20 +151,26 @@ export const useAppStore = create<AppState>((set, get) => ({
     }),
 
   waypoints: [],
-  addWaypoint: (point) => set((state) => ({ waypoints: [...state.waypoints, point] })),
-  setWaypoints: (points) => set({ waypoints: points }),
+  // Any stop edit clears `routeImported` so the normal router takes over from a frozen imported line.
+  addWaypoint: (point) =>
+    set((state) => ({ waypoints: [...state.waypoints, point], routeImported: false })),
+  setWaypoints: (points) => set({ waypoints: points, routeImported: false }),
   insertWaypoint: (index, point) =>
     set((state) => {
       const next = [...state.waypoints];
       next.splice(Math.max(0, Math.min(index, next.length)), 0, point);
-      return { waypoints: next };
+      return { waypoints: next, routeImported: false };
     }),
   updateWaypoint: (index, point) =>
     set((state) => ({
       waypoints: state.waypoints.map((w, i) => (i === index ? point : w)),
+      routeImported: false,
     })),
   removeWaypoint: (index) =>
-    set((state) => ({ waypoints: state.waypoints.filter((_, i) => i !== index) })),
+    set((state) => ({
+      waypoints: state.waypoints.filter((_, i) => i !== index),
+      routeImported: false,
+    })),
   moveWaypoint: (from, to) =>
     set((state) => {
       if (
@@ -173,9 +184,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       const next = [...state.waypoints];
       const [moved] = next.splice(from, 1);
       next.splice(to, 0, moved!);
-      return { waypoints: next };
+      return { waypoints: next, routeImported: false };
     }),
-  reverseWaypoints: () => set((state) => ({ waypoints: [...state.waypoints].reverse() })),
+  reverseWaypoints: () =>
+    set((state) => ({ waypoints: [...state.waypoints].reverse(), routeImported: false })),
   clearWaypoints: () =>
     set({
       waypoints: [],
@@ -186,10 +198,24 @@ export const useAppStore = create<AppState>((set, get) => ({
       hoverIndex: null,
       slicePlan: null,
       forcedStopIds: [],
+      routeImported: false,
     }),
 
   route: null,
   setRoute: (route) => set({ route }),
+
+  routeImported: false,
+  setImportedRoute: (analysis, waypoints) =>
+    set((state) => ({
+      waypoints,
+      route: analysis,
+      alternatives: [analysis],
+      selectedRouteIndex: 0,
+      routeError: null,
+      routeImported: true,
+      hoverIndex: null,
+      mapFocusNonce: state.mapFocusNonce + 1,
+    })),
 
   mapFocusNonce: 0,
   requestMapFocus: () => set((state) => ({ mapFocusNonce: state.mapFocusNonce + 1 })),
@@ -287,6 +313,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       slicePlan: null,
       forcedStopIds: [],
       currentRouteId: null,
+      routeImported: false,
     }),
 
   openRoute: (id) => {
@@ -313,6 +340,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       slicePlan: null,
       forcedStopIds: [],
       currentRouteId: id,
+      routeImported: false,
       mapFocusNonce: state.mapFocusNonce + 1, // re-frame the map to the loaded route
     });
   },
