@@ -152,11 +152,11 @@ function buildPoiElement(poi: Poi, pinned: boolean): HTMLDivElement {
   return el;
 }
 
-/** Popup DOM: name + category, plus a pin/unpin overnight-stop action for shelters. */
-function buildPoiPopup(poi: Poi, pinned: boolean): HTMLDivElement {
+/** Popup DOM: name + category, an "Add as stop" action, plus pin/unpin overnight for shelters. */
+function buildPoiPopup(poi: Poi, pinned: boolean, onClose: () => void): HTMLDivElement {
   const meta = POI_META[poi.kind];
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'font:13px system-ui,sans-serif;min-width:150px;color:#202124;';
+  wrap.style.cssText = 'font:13px system-ui,sans-serif;min-width:160px;color:#202124;';
 
   const title = document.createElement('div');
   title.style.cssText = 'font-weight:600;';
@@ -167,15 +167,35 @@ function buildPoiPopup(poi: Poi, pinned: boolean): HTMLDivElement {
   sub.textContent = meta.label;
   wrap.append(title, sub);
 
+  // Any POI can be dropped into the route as a named stop.
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.textContent = '➕ Add as stop';
+  addBtn.style.cssText =
+    'margin-top:8px;width:100%;border-radius:6px;border:1px solid #1A73E8;background:#1A73E8;color:#fff;padding:5px 8px;font:600 12px system-ui,sans-serif;cursor:pointer;';
+  addBtn.addEventListener('click', () => {
+    useAppStore
+      .getState()
+      .addWaypoint({ lng: poi.lng, lat: poi.lat, name: poi.name ?? meta.label });
+    onClose();
+  });
+  wrap.append(addBtn);
+
   if (poi.kind !== 'spring') {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.textContent = pinned ? 'Unpin overnight stop' : 'Pin as overnight stop';
-    btn.style.cssText = `margin-top:8px;width:100%;border-radius:6px;border:1px solid ${meta.color};background:${
+    btn.style.cssText = `margin-top:6px;width:100%;border-radius:6px;border:1px solid ${meta.color};background:${
       pinned ? meta.color : '#fff'
     };color:${pinned ? '#fff' : meta.color};padding:4px 8px;font:600 12px system-ui,sans-serif;cursor:pointer;`;
     btn.addEventListener('click', () => {
-      useAppStore.getState().toggleForcedStop(poi.id);
+      const store = useAppStore.getState();
+      store.toggleForcedStop(poi.id);
+      // Pinning a shelter also drops it into the route so the path is rebuilt through it.
+      if (!pinned && !store.waypoints.some((w) => w.lng === poi.lng && w.lat === poi.lat)) {
+        store.addWaypoint({ lng: poi.lng, lat: poi.lat, name: poi.name ?? meta.label });
+      }
+      onClose();
     });
     wrap.append(btn);
   }
@@ -236,6 +256,24 @@ export function MapCanvas() {
           zoom: DEFAULT_ZOOM,
         });
         mapRef.current = map;
+
+        // Empty map → center on the user's current location (prompts for permission). Denied or
+        // unavailable falls back silently to the default center; a stop added meanwhile wins.
+        if (useAppStore.getState().waypoints.length === 0 && 'geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              if (cancelled || useAppStore.getState().waypoints.length > 0) return;
+              map.flyTo({
+                center: [pos.coords.longitude, pos.coords.latitude],
+                zoom: 12,
+                duration: 800,
+              });
+            },
+            () => {}, // denied / unavailable → keep the default center
+            { enableHighAccuracy: false, timeout: 8000, maximumAge: 600_000 },
+          );
+        }
+
         // Create the route + insert-hint layers and their interactions ONCE, at load, so the
         // handlers are reliably attached (rather than racing the first route render).
         map.on('load', () => {
@@ -544,10 +582,11 @@ export function MapCanvas() {
       el.addEventListener('click', (ev) => {
         ev.stopPropagation();
         poiPopupRef.current?.remove();
-        poiPopupRef.current = new mapboxgl.Popup({ offset: 18, closeButton: true })
+        const popup = new mapboxgl.Popup({ offset: 18, closeButton: true })
           .setLngLat([poi.lng, poi.lat])
-          .setDOMContent(buildPoiPopup(poi, pinned))
+          .setDOMContent(buildPoiPopup(poi, pinned, () => popup.remove()))
           .addTo(map);
+        poiPopupRef.current = popup;
       });
       return marker;
     });
