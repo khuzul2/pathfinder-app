@@ -14,12 +14,18 @@ export interface RoutingOptions {
   autoOvernight: boolean;
   /** Which overnight stop types are acceptable (bivvy = wild camp anywhere). */
   stayTypes: Record<StayType, boolean>;
+  /** How far off the route (metres) a shelter may sit and still count as an overnight stop. */
+  shelterBufferMeters: number;
 }
+
+/** Selectable shelter search radii (metres) — a wider radius finds more, slightly-off-route stays. */
+export const SHELTER_BUFFER_OPTIONS = [500, 1000, 1500, 2000, 2500] as const;
 
 export const DEFAULT_ROUTING_OPTIONS: RoutingOptions = {
   avoidRoads: true,
   autoOvernight: true,
   stayTypes: { hut: true, camp: true, hotel: false, guesthouse: false, bivvy: false },
+  shelterBufferMeters: 1000,
 };
 
 /** Options passed down the data layer for a single route request. */

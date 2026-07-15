@@ -1,5 +1,5 @@
 import { useAppStore } from '../state/store';
-import type { StayType } from '../lib/routingOptions';
+import { SHELTER_BUFFER_OPTIONS, type StayType } from '../lib/routingOptions';
 
 function Toggle({
   label,
@@ -50,7 +50,7 @@ const STAYS: { kind: StayType; label: string }[] = [
 export function RoutingOptions() {
   const routingOptions = useAppStore((s) => s.routingOptions);
   const setRoutingOptions = useAppStore((s) => s.setRoutingOptions);
-  const { avoidRoads, autoOvernight, stayTypes } = routingOptions;
+  const { avoidRoads, autoOvernight, stayTypes, shelterBufferMeters } = routingOptions;
 
   const toggleStay = (kind: StayType) =>
     setRoutingOptions({ stayTypes: { ...stayTypes, [kind]: !stayTypes[kind] } });
@@ -72,23 +72,45 @@ export function RoutingOptions() {
       />
 
       {autoOvernight && (
-        <div role="group" aria-label="Overnight stay types" className="ml-6 flex flex-wrap gap-1">
-          {STAYS.map(({ kind, label }) => (
-            <button
-              key={kind}
-              type="button"
-              aria-pressed={stayTypes[kind]}
-              onClick={() => toggleStay(kind)}
-              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
-                stayTypes[kind]
-                  ? 'bg-trail-green text-white'
-                  : 'bg-neutral-100 text-slate-accent/70 dark:bg-neutral-700 dark:text-neutral-300'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <>
+          <div role="group" aria-label="Overnight stay types" className="ml-6 flex flex-wrap gap-1">
+            {STAYS.map(({ kind, label }) => (
+              <button
+                key={kind}
+                type="button"
+                aria-pressed={stayTypes[kind]}
+                onClick={() => toggleStay(kind)}
+                className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                  stayTypes[kind]
+                    ? 'bg-trail-green text-white'
+                    : 'bg-neutral-100 text-slate-accent/70 dark:bg-neutral-700 dark:text-neutral-300'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <div className="ml-6 mt-1 flex items-center gap-1.5">
+            <span className="text-xs opacity-60">Search radius</span>
+            <div role="group" aria-label="Shelter search radius" className="flex flex-wrap gap-1">
+              {SHELTER_BUFFER_OPTIONS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  aria-pressed={shelterBufferMeters === m}
+                  onClick={() => setRoutingOptions({ shelterBufferMeters: m })}
+                  className={`rounded px-1.5 py-0.5 text-xs tabular-nums transition-colors ${
+                    shelterBufferMeters === m
+                      ? 'bg-trail-green text-white'
+                      : 'bg-neutral-100 text-slate-accent/70 dark:bg-neutral-700 dark:text-neutral-300'
+                  }`}
+                >
+                  {m < 1000 ? `${m}m` : `${m / 1000}km`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </>
       )}
     </section>
   );

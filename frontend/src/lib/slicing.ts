@@ -138,42 +138,50 @@ export function planDays(
   const bivvyPenalty = (target * 0.2) ** 2;
 
   const n = boundaries.length;
-  const dp: number[] = new Array<number>(n).fill(Infinity);
-  const prev: number[] = new Array<number>(n).fill(-1);
-  dp[0] = 0;
 
-  for (let j = 1; j < n; j++) {
-    const bj = boundaries[j] as number;
-    const isBivvyOvernight = bj !== lastIndex && !shelterByIndex.has(bj);
-    for (let i = 0; i < j; i++) {
-      const from = points[boundaries[i] as number] as RoutePoint;
-      const to = points[bj] as RoutePoint;
-      const dayTime = to.timeSeconds - from.timeSeconds;
-      if (dayTime > cap) continue;
-      const cost =
-        (dp[i] as number) + (dayTime - target) ** 2 + (isBivvyOvernight ? bivvyPenalty : 0);
-      if (cost < (dp[j] as number)) {
-        dp[j] = cost;
-        prev[j] = i;
+  /**
+   * DP over the candidate boundaries minimizing Σ(dayTime − target)². `hardCap` skips any day over
+   * the cap (the ideal); when that leaves no legal split, a second SOFT pass instead penalizes
+   * over-cap days so the route is still broken at the reachable shelters (walking to the next one)
+   * rather than collapsing to a single unusable leg. Returns the chosen boundary indices, or null.
+   */
+  const solve = (hardCap: boolean): number[] | null => {
+    const dp: number[] = new Array<number>(n).fill(Infinity);
+    const prev: number[] = new Array<number>(n).fill(-1);
+    dp[0] = 0;
+    for (let j = 1; j < n; j++) {
+      const bj = boundaries[j] as number;
+      const isBivvyOvernight = bj !== lastIndex && !shelterByIndex.has(bj);
+      for (let i = 0; i < j; i++) {
+        const from = points[boundaries[i] as number] as RoutePoint;
+        const to = points[bj] as RoutePoint;
+        const dayTime = to.timeSeconds - from.timeSeconds;
+        if (hardCap && dayTime > cap) continue;
+        const overCap = !hardCap && dayTime > cap ? (dayTime - cap) ** 2 : 0;
+        const cost =
+          (dp[i] as number) +
+          (dayTime - target) ** 2 +
+          (isBivvyOvernight ? bivvyPenalty : 0) +
+          overCap;
+        if (cost < (dp[j] as number)) {
+          dp[j] = cost;
+          prev[j] = i;
+        }
       }
     }
-  }
+    if (!Number.isFinite(dp[n - 1] as number)) return null;
+    const chosen: number[] = [];
+    for (let k = n - 1; k >= 0; k = prev[k] as number) {
+      chosen.push(boundaries[k] as number);
+      if (k === 0) break;
+    }
+    return chosen.reverse();
+  };
 
-  if (!Number.isFinite(dp[n - 1] as number)) {
-    return {
-      days: [makeDay(0, 0, lastIndex, points, null)],
-      warnings: [
-        'No shelters within reach keep every day under the limit — showing the whole route as one leg.',
-      ],
-    };
+  const chosen = solve(true) ?? solve(false);
+  if (!chosen) {
+    return { days: [makeDay(0, 0, lastIndex, points, null)], warnings: [] };
   }
-
-  const chosen: number[] = [];
-  for (let k = n - 1; k >= 0; k = prev[k] as number) {
-    chosen.push(boundaries[k] as number);
-    if (k === 0) break;
-  }
-  chosen.reverse();
 
   const days: DaySegment[] = [];
   for (let d = 0; d < chosen.length - 1; d++) {
@@ -185,5 +193,14 @@ export function planDays(
         : (shelterByIndex.get(end) ?? (allowBivvy ? bivvyAt(points, end) : null));
     days.push(makeDay(d, start, end, points, shelter));
   }
-  return { days, warnings: [] };
+
+  const warnings: string[] = [];
+  if (days.some((d) => d.movingSeconds > cap)) {
+    warnings.push(
+      candidates.length === 0
+        ? 'No shelters within reach keep every day under the limit — some days run long.'
+        : 'No shelter is reachable within some days — they exceed the daily limit.',
+    );
+  }
+  return { days, warnings };
 }

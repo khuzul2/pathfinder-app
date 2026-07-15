@@ -49,6 +49,7 @@ export function useDayPlan() {
     setSlicePlan(
       planDays(route.points, shelters, {
         targetSeconds: targetHours * 3600,
+        bufferMeters: routingOptions.shelterBufferMeters,
         allowBivvy: stayTypes.bivvy,
       }),
     );

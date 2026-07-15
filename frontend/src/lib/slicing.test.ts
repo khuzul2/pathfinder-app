@@ -61,6 +61,20 @@ describe('planDays', () => {
     expect(plan.warnings[0]).toMatch(/no shelters within reach/i);
   });
 
+  it('soft-splits at the reachable shelters even when a gap exceeds the cap', () => {
+    // 20 h route; the only shelter sits at 9 h. Day 1 (0→9 h) is over the 8 h cap, but soft mode
+    // still splits there rather than collapsing to a single 20 h leg.
+    const route = makeRoute([0, 3, 6, 9, 12, 15, 18, 20]);
+    const plan = planDays(route, [shelterAt(3, 'hut9')], {
+      targetSeconds: 6 * H,
+      capSeconds: 8 * H,
+    });
+    expect(plan.days).toHaveLength(2);
+    expect(plan.days[0]!.endIndex).toBe(3);
+    expect(plan.days[0]!.shelterAtEnd?.id).toBe('hut9');
+    expect(plan.warnings[0]).toMatch(/exceed the daily limit/i);
+  });
+
   it('splits at a shelter when the route is over the cap', () => {
     const route = makeRoute([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]); // 9 h total
     const plan = planDays(route, [shelterAt(6, 'hut6')], {
