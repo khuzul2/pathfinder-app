@@ -50,6 +50,7 @@ const STAYS: { kind: StayType; label: string }[] = [
 export function RoutingOptions() {
   const routingOptions = useAppStore((s) => s.routingOptions);
   const setRoutingOptions = useAppStore((s) => s.setRoutingOptions);
+  const sheltersLoading = useAppStore((s) => s.sheltersLoading);
   const { avoidRoads, autoOvernight, stayTypes, shelterBufferMeters, waterStops } = routingOptions;
 
   const toggleStay = (kind: StayType) =>
@@ -69,12 +70,6 @@ export function RoutingOptions() {
         label="Auto overnight stays"
         pressed={autoOvernight}
         onClick={() => setRoutingOptions({ autoOvernight: !autoOvernight })}
-      />
-      <Toggle
-        label="Add water stops"
-        hint="(≥1 spring/day)"
-        pressed={waterStops}
-        onClick={() => setRoutingOptions({ waterStops: !waterStops })}
       />
 
       {autoOvernight && (
@@ -116,8 +111,24 @@ export function RoutingOptions() {
               ))}
             </div>
           </div>
+          {sheltersLoading && (
+            <div role="status" className="ml-6 mt-1 flex items-center gap-2 text-xs opacity-70">
+              <span
+                className="h-3 w-3 animate-spin rounded-full border-2 border-trail-green border-t-transparent"
+                aria-hidden="true"
+              />
+              Finding shelters along the route…
+            </div>
+          )}
         </>
       )}
+
+      <Toggle
+        label="Add water stops"
+        hint="(≥1 spring/day)"
+        pressed={waterStops}
+        onClick={() => setRoutingOptions({ waterStops: !waterStops })}
+      />
     </section>
   );
 }

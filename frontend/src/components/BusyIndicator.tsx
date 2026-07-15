@@ -8,7 +8,9 @@ import { useAppStore } from '../state/store';
 export function BusyIndicator() {
   const busy = useAppStore((s) => s.busy);
   const routing = useAppStore((s) => s.routing);
-  const message = busy ?? (routing ? 'Routing…' : null);
+  const sheltersLoading = useAppStore((s) => s.sheltersLoading);
+  const message =
+    busy ?? (routing ? 'Routing…' : sheltersLoading ? 'Finding overnight stops & water…' : null);
   if (!message) return null;
 
   return (

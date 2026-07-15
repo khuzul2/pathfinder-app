@@ -96,6 +96,9 @@ export interface AppState {
   /** Water sources (springs) along the route corridor (drives the "add water stops" action). */
   routeSprings: Poi[];
   setRouteSprings: (pois: Poi[]) => void;
+  /** True while the route-corridor shelter/spring fetch is in flight (drives overnight feedback). */
+  sheltersLoading: boolean;
+  setSheltersLoading: (loading: boolean) => void;
   poiFilters: Record<PoiKind, boolean>;
   togglePoiFilter: (kind: PoiKind) => void;
 
@@ -268,6 +271,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setRouteShelters: (routeShelters) => set({ routeShelters }),
   routeSprings: [],
   setRouteSprings: (routeSprings) => set({ routeSprings }),
+  sheltersLoading: false,
+  setSheltersLoading: (sheltersLoading) => set({ sheltersLoading }),
   // The three core categories show by default; the rest are opt-in via the layer toggles so the
   // map isn't flooded (peaks especially are dense in the Alps).
   poiFilters: {

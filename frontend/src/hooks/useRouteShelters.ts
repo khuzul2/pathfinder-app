@@ -46,6 +46,7 @@ export function useRouteShelters() {
   const bufferMeters = useAppStore((s) => s.routingOptions.shelterBufferMeters);
   const setRouteShelters = useAppStore((s) => s.setRouteShelters);
   const setRouteSprings = useAppStore((s) => s.setRouteSprings);
+  const setSheltersLoading = useAppStore((s) => s.setSheltersLoading);
 
   const padDeg = Math.max(bufferMeters / 111_000, 0.02);
   const tiles = useMemo(
@@ -76,4 +77,8 @@ export function useRouteShelters() {
     setRouteShelters(pois.filter((p) => p.kind !== 'spring'));
     setRouteSprings(pois.filter((p) => p.kind === 'spring'));
   }, [query.data, setRouteShelters, setRouteSprings]);
+
+  useEffect(() => {
+    setSheltersLoading(query.isFetching);
+  }, [query.isFetching, setSheltersLoading]);
 }
