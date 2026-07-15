@@ -271,3 +271,25 @@ alternative if we want it sooner (fits the no-lock-in ethos). **Consequences:** 
 Waymarked Trails for named/community routes (search + interactive overlay) and loses nothing by
 waiting; Wanderer slots in behind `/api/*` when the backend ships, adding true user trip reports.
 **Wikiloc stays dropped** (no public API keys).
+
+## ADR-021 — Overnight planning made to work for long routes (corridor tiling, soft cap, faithful import) + water stops
+**Status:** Accepted (2026-07-15), extends ADR-002/015/018/019. **Context:** on a long imported
+trail (Via Francigena) overnight planning found no shelters. Root causes: a single continental
+shelter-fetch bbox timed out on Overpass, and "make this your hike" produced a coarse 28-stop
+re-snap (2841 km vs ~1900 km) that diverged from the real towns. **Decisions:** (1) **Corridor
+tiling** — `lib/routeCorridor.ts` splits the route into a small, capped set of padded tiles that
+follow the corridor; `useRouteShelters` fetches them with limited concurrency (≤10 tiles, 2 in
+flight) and dedupes, so shelter discovery scales to any length without a giant query. (2)
+**Configurable radius** — `routingOptions.shelterBufferMeters` (default 1 km, 500 m–2.5 km) threads
+into the slicer's shelter match. (3) **Soft cap** — `planDays` keeps the hard-cap DP optimum when
+feasible but, instead of collapsing to one leg when a gap exceeds the cap, runs a second pass that
+penalizes over-cap days so the route still splits at the reachable shelters (with a warning). (4)
+**Faithful import** — `services/trailImport.ts` densely samples the real geometry, routes it in
+chunks under ORS's coordinate limit (`lib/routeChunks.ts`), and stitches the chunk geometries into
+one analysis (real distance + elevation + Tobler); a `routeImported` store flag shows this line
+directly and suppresses re-routing until the user edits a stop (best-effort — falls back to the
+sparse re-snap). (5) **Water stops** — `lib/waterStops.ts` mirrors the overnight insertion: a
+one-shot per-day action that reroutes through the nearest reachable spring for any day not already
+within ~150 m of water (springs come from the same corridor fetch). **Consequences:** overnight +
+water planning works on continental routes; import geometry is faithful; costs stay bounded (only
+long routes tile/chunk, capped + concurrency-limited; day-plan previews are memoized).
