@@ -16,6 +16,7 @@ import { POI_META } from '../lib/poiApi';
 import type { Poi } from '../lib/poiApi';
 import { haversineMeters } from '../lib/geo';
 import { segmentForHover } from '../lib/routeInsert';
+import { sampleWaypoints, TRAIL_IMPORT_STOPS } from '../lib/trailGeometry';
 import { reverseGeocode } from '../services/geocodeClient';
 
 /** The subset of the lazy-loaded mapbox-gl default export we use. */
@@ -38,6 +39,10 @@ const INSERT_SOURCE = 'insert-hint';
 const INSERT_LAYER = 'insert-hint-line';
 const TRAILS_SOURCE = 'waymarked-hiking';
 const TRAILS_LAYER = 'waymarked-hiking-layer';
+// Named community/long-distance hikes as an interactive vector layer (hover to highlight, click to
+// adopt) — distinct from the raster marked-paths overlay above.
+const COMMUNITY_SOURCE = 'community-hikes';
+const COMMUNITY_LAYER = 'community-hikes-line';
 
 /** Waymarked Trails renders OSM hiking relations (SAC-coloured routes) as a raster overlay. */
 const TRAILS_TILES = 'https://tile.waymarkedtrails.org/hiking/{z}/{x}/{y}.png';
@@ -109,6 +114,29 @@ function buildInsertHandle(): HTMLDivElement {
   el.textContent = '+';
   el.title = 'Click to add a stop here';
   return el;
+}
+
+/** Adopt a community hike as the current route (imported as re-snapped stops so it stays editable). */
+function importHike(id: number): void {
+  const store = useAppStore.getState();
+  const hike = store.communityHikes.find((h) => h.id === id);
+  if (!hike || hike.points.length < 2) return;
+  store.setWaypoints(sampleWaypoints(hike.points, TRAIL_IMPORT_STOPS, hike.name));
+  store.requestMapFocus();
+}
+
+/** Hover-tooltip DOM for a community hike: its name + the call to action. */
+function buildHikeTooltip(name: string): HTMLDivElement {
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'font:13px system-ui,sans-serif;color:#202124;min-width:120px;';
+  const title = document.createElement('div');
+  title.style.cssText = 'font-weight:600;';
+  title.textContent = name;
+  const hint = document.createElement('div');
+  hint.style.cssText = 'opacity:0.65;margin-top:1px;font-size:11px;';
+  hint.textContent = 'Click to make this your hike';
+  wrap.append(title, hint);
+  return wrap;
 }
 
 /** Re-resolve a stop's name after it is moved (POI snap or reverse-geocode) at position `index`. */
@@ -220,6 +248,8 @@ export function MapCanvas() {
   const poiMarkersRef = useRef<Marker[]>([]);
   const poiPopupRef = useRef<Popup | null>(null);
   const hoverMarkerRef = useRef<Marker | null>(null);
+  const communityPopupRef = useRef<Popup | null>(null);
+  const hoveredHikeRef = useRef<number | null>(null);
 
   const waypoints = useAppStore((s) => s.waypoints);
   const route = useAppStore((s) => s.route);
@@ -231,6 +261,7 @@ export function MapCanvas() {
   const forcedStopIds = useAppStore((s) => s.forcedStopIds);
   const hoverIndex = useAppStore((s) => s.hoverIndex);
   const trailsOverlay = useAppStore((s) => s.trailsOverlay);
+  const communityHikes = useAppStore((s) => s.communityHikes);
   const radarEnabled = useAppStore((s) => s.radarEnabled);
   const radarHost = useAppStore((s) => s.radarHost);
   const radarFrames = useAppStore((s) => s.radarFrames);
@@ -313,6 +344,67 @@ export function MapCanvas() {
             source: INSERT_SOURCE,
             layout: { 'line-cap': 'round', 'line-join': 'round' },
             paint: { 'line-color': '#F9AB00', 'line-width': 9, 'line-opacity': 0.9 },
+          });
+
+          // Community hikes: an interactive purple vector layer, drawn BELOW the routes so the
+          // user's own (blue) route always stays on top. Hover highlights + tooltips; click adopts.
+          map.addSource(COMMUNITY_SOURCE, { type: 'geojson', data: EMPTY_FC });
+          map.addLayer(
+            {
+              id: COMMUNITY_LAYER,
+              type: 'line',
+              source: COMMUNITY_SOURCE,
+              layout: { 'line-cap': 'round', 'line-join': 'round' },
+              paint: {
+                'line-color': '#8E24AA',
+                'line-width': ['case', ['boolean', ['feature-state', 'hover'], false], 7, 4],
+                'line-opacity': ['case', ['boolean', ['feature-state', 'hover'], false], 1, 0.75],
+              },
+            },
+            ROUTES_LAYER,
+          );
+
+          map.on('mousemove', COMMUNITY_LAYER, (e) => {
+            map.getCanvas().style.cursor = 'pointer';
+            const id = e.features?.[0]?.id;
+            if (typeof id !== 'number') return;
+            if (hoveredHikeRef.current !== null && hoveredHikeRef.current !== id) {
+              map.setFeatureState(
+                { source: COMMUNITY_SOURCE, id: hoveredHikeRef.current },
+                { hover: false },
+              );
+            }
+            hoveredHikeRef.current = id;
+            map.setFeatureState({ source: COMMUNITY_SOURCE, id }, { hover: true });
+            const hike = useAppStore.getState().communityHikes.find((h) => h.id === id);
+            if (hike && mapboxRef.current) {
+              if (!communityPopupRef.current) {
+                communityPopupRef.current = new mapboxRef.current.Popup({
+                  closeButton: false,
+                  closeOnClick: false,
+                  offset: 12,
+                });
+              }
+              communityPopupRef.current
+                .setLngLat(e.lngLat)
+                .setDOMContent(buildHikeTooltip(hike.name))
+                .addTo(map);
+            }
+          });
+          map.on('mouseleave', COMMUNITY_LAYER, () => {
+            map.getCanvas().style.cursor = '';
+            if (hoveredHikeRef.current !== null) {
+              map.setFeatureState(
+                { source: COMMUNITY_SOURCE, id: hoveredHikeRef.current },
+                { hover: false },
+              );
+              hoveredHikeRef.current = null;
+            }
+            communityPopupRef.current?.remove();
+          });
+          map.on('click', COMMUNITY_LAYER, (e) => {
+            const id = e.features?.[0]?.id;
+            if (typeof id === 'number') importHike(id);
           });
 
           const clearInsertHint = () => {
@@ -537,6 +629,32 @@ export function MapCanvas() {
     if (map.getSource(ROUTES_SOURCE)) draw();
     else map.once('load', draw);
   }, [alternatives, selectedRouteIndex]);
+
+  // --- community hikes (interactive vector overlay; source/layer/handlers created at load) ---
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const src = map.getSource(COMMUNITY_SOURCE) as GeoJSONSource | undefined;
+      if (!src) return;
+      src.setData({
+        type: 'FeatureCollection',
+        features: communityHikes
+          .filter((h) => h.points.length >= 2)
+          .map((h) => ({
+            type: 'Feature' as const,
+            id: h.id,
+            properties: { name: h.name, ref: h.ref ?? '' },
+            geometry: {
+              type: 'LineString' as const,
+              coordinates: h.points.map((p) => [p.lng, p.lat] as [number, number]),
+            },
+          })),
+      });
+    };
+    if (map.getSource(COMMUNITY_SOURCE)) apply();
+    else map.once('load', apply);
+  }, [communityHikes]);
 
   // --- radar overlay ---
   useEffect(() => {

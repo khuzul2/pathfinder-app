@@ -40,6 +40,8 @@ function Toggle({
 export function LayerControls() {
   const trailsOverlay = useAppStore((s) => s.trailsOverlay);
   const toggleTrailsOverlay = useAppStore((s) => s.toggleTrailsOverlay);
+  const communityHikesEnabled = useAppStore((s) => s.communityHikesEnabled);
+  const toggleCommunityHikes = useAppStore((s) => s.toggleCommunityHikes);
   const radarEnabled = useAppStore((s) => s.radarEnabled);
   const toggleRadar = useAppStore((s) => s.toggleRadar);
   const poiFilters = useAppStore((s) => s.poiFilters);
@@ -48,7 +50,17 @@ export function LayerControls() {
   return (
     <section aria-label="Map layers" className="flex flex-col gap-0.5">
       <span className="mb-1 text-[11px] uppercase tracking-wide opacity-60">Layers</span>
-      <Toggle label="Hiking trails overlay" pressed={trailsOverlay} onClick={toggleTrailsOverlay} />
+      <Toggle
+        label="Hiking trails (marked paths)"
+        pressed={trailsOverlay}
+        onClick={toggleTrailsOverlay}
+      />
+      <Toggle
+        label="Community hikes"
+        swatch="#8E24AA"
+        pressed={communityHikesEnabled}
+        onClick={toggleCommunityHikes}
+      />
       <Toggle label="Rain radar" pressed={radarEnabled} onClick={toggleRadar} />
       {POI_KINDS.map((kind) => (
         <Toggle

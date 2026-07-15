@@ -13,3 +13,15 @@ export function mercatorToLngLat(x: number, y: number): LngLat {
   const lat = (180 / Math.PI) * (2 * Math.atan(Math.exp((latDeg * Math.PI) / 180)) - Math.PI / 2);
   return { lng, lat };
 }
+
+/**
+ * Convert WGS84 lng/lat to a Web Mercator (EPSG:3857) coordinate — the inverse of
+ * `mercatorToLngLat`. Needed to build the Web-Mercator bbox that Waymarked Trails' `by_area`
+ * listing expects.
+ */
+export function lngLatToMercator(lng: number, lat: number): { x: number; y: number } {
+  const x = (lng / 180) * HALF_CIRCUMFERENCE;
+  const latRad = (lat * Math.PI) / 180;
+  const y = (Math.log(Math.tan(Math.PI / 4 + latRad / 2)) / Math.PI) * HALF_CIRCUMFERENCE;
+  return { x, y };
+}

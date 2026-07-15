@@ -1,6 +1,9 @@
 import { mercatorToLngLat } from './webMercator';
 import type { LngLat, Waypoint } from './geo';
 
+/** Stops an imported trail becomes: enough to hold the line, few enough for one ORS snap. */
+export const TRAIL_IMPORT_STOPS = 28;
+
 /**
  * Recursively collect the primary route geometry from a Waymarked Trails route detail and reproject
  * it to WGS84. The detail is a superroute hierarchy: internal nodes carry a `main` array of child

@@ -12,7 +12,7 @@ describe('LayerControls', () => {
 
   it('toggles the trail overlay and rain radar', async () => {
     render(<LayerControls />);
-    await userEvent.click(screen.getByRole('button', { name: /hiking trails overlay/i }));
+    await userEvent.click(screen.getByRole('button', { name: /hiking trails/i }));
     expect(useAppStore.getState().trailsOverlay).toBe(true);
     await userEvent.click(screen.getByRole('button', { name: /rain radar/i }));
     expect(useAppStore.getState().radarEnabled).toBe(true);

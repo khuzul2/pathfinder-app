@@ -7,6 +7,7 @@ import { useApplyTheme } from './hooks/useApplyTheme';
 import { useRoute } from './hooks/useRoute';
 import { usePois } from './hooks/usePois';
 import { useRouteShelters } from './hooks/useRouteShelters';
+import { useCommunityHikes } from './hooks/useCommunityHikes';
 import { useRadar } from './hooks/useRadar';
 import { useDayPlan } from './hooks/useDayPlan';
 import { useRouteAutosave } from './hooks/useRouteAutosave';
@@ -22,6 +23,7 @@ export function App() {
   useRoute(); // fetches + analyzes the route whenever waypoints change
   usePois(); // fetches POIs for the viewport (zoom-gated)
   useRouteShelters(); // fetches overnight shelters along the whole route (viewport-independent)
+  useCommunityHikes(); // fetches named hikes in view when the community-hikes overlay is on
   useRadar(); // fetches the radar frame index when the overlay is on
   useDayPlan(); // recomputes the multi-day slice plan
   useRouteAutosave(); // autosaves the working route into "My routes"

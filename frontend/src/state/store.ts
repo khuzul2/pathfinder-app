@@ -9,6 +9,7 @@ import { SLICING } from '../lib/constants';
 import { makeSavedRoute, defaultRouteName, type SavedRoute } from '../lib/savedRoute';
 import { DEFAULT_ROUTING_OPTIONS, type RoutingOptions } from '../lib/routingOptions';
 import { localRouteStorage } from '../services/routeStorage';
+import type { CommunityHike } from '../services/waymarkedTrails';
 
 export type { Waypoint };
 
@@ -66,6 +67,12 @@ export interface AppState {
   // Map layers (Phase 6)
   trailsOverlay: boolean;
   toggleTrailsOverlay: () => void;
+
+  // Community hikes overlay (Phase 10) — named long routes drawn as an interactive vector layer.
+  communityHikesEnabled: boolean;
+  toggleCommunityHikes: () => void;
+  communityHikes: CommunityHike[];
+  setCommunityHikes: (hikes: CommunityHike[]) => void;
 
   // Routing options (Phase 8)
   routingOptions: RoutingOptions;
@@ -195,6 +202,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   trailsOverlay: false,
   toggleTrailsOverlay: () => set((state) => ({ trailsOverlay: !state.trailsOverlay })),
+
+  communityHikesEnabled: false,
+  toggleCommunityHikes: () =>
+    set((state) => ({ communityHikesEnabled: !state.communityHikesEnabled })),
+  communityHikes: [],
+  setCommunityHikes: (communityHikes) => set({ communityHikes }),
 
   routingOptions: DEFAULT_ROUTING_OPTIONS,
   setRoutingOptions: (patch) =>

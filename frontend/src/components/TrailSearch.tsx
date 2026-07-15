@@ -2,11 +2,8 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../state/store';
 import { searchTrails, fetchTrailPolyline, type TrailHit } from '../services/waymarkedTrails';
-import { sampleWaypoints } from '../lib/trailGeometry';
+import { sampleWaypoints, TRAIL_IMPORT_STOPS } from '../lib/trailGeometry';
 import { useDebouncedValue } from '../hooks/useDebouncedValue';
-
-/** How many stops an imported trail becomes — enough to hold the line, few enough for one ORS snap. */
-const IMPORT_STOPS = 28;
 
 /**
  * Search named community/long-distance hiking routes (Waymarked Trails) and load one as the current
@@ -35,7 +32,7 @@ export function TrailSearch() {
     setError(null);
     try {
       const line = await fetchTrailPolyline(hit.id);
-      const stops = sampleWaypoints(line, IMPORT_STOPS, hit.name);
+      const stops = sampleWaypoints(line, TRAIL_IMPORT_STOPS, hit.name);
       if (stops.length < 2) {
         setError('That route has no usable geometry.');
         return;
