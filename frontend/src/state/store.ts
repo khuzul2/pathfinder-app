@@ -89,6 +89,9 @@ export interface AppState {
   /** Overnight-capable POIs along the whole route corridor (drives the day planner, viewport-independent). */
   routeShelters: Poi[];
   setRouteShelters: (pois: Poi[]) => void;
+  /** Water sources (springs) along the route corridor (drives the "add water stops" action). */
+  routeSprings: Poi[];
+  setRouteSprings: (pois: Poi[]) => void;
   poiFilters: Record<PoiKind, boolean>;
   togglePoiFilter: (kind: PoiKind) => void;
 
@@ -256,6 +259,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setPois: (pois) => set({ pois }),
   routeShelters: [],
   setRouteShelters: (routeShelters) => set({ routeShelters }),
+  routeSprings: [],
+  setRouteSprings: (routeSprings) => set({ routeSprings }),
   // The three core categories show by default; the rest are opt-in via the layer toggles so the
   // map isn't flooded (peaks especially are dense in the Alps).
   poiFilters: {

@@ -16,6 +16,8 @@ export interface RoutingOptions {
   stayTypes: Record<StayType, boolean>;
   /** How far off the route (metres) a shelter may sit and still count as an overnight stop. */
   shelterBufferMeters: number;
+  /** Offer to reroute the path through a water source at least once per day. */
+  waterStops: boolean;
 }
 
 /** Selectable shelter search radii (metres) — a wider radius finds more, slightly-off-route stays. */
@@ -26,6 +28,7 @@ export const DEFAULT_ROUTING_OPTIONS: RoutingOptions = {
   autoOvernight: true,
   stayTypes: { hut: true, camp: true, hotel: false, guesthouse: false, bivvy: false },
   shelterBufferMeters: 1000,
+  waterStops: false,
 };
 
 /** Options passed down the data layer for a single route request. */

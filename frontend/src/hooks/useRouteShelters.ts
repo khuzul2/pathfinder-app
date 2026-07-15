@@ -2,8 +2,11 @@ import { useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAppStore } from '../state/store';
 import { getPois } from '../services/dataClient';
-import { OVERNIGHT_POI_KINDS, type Bbox, type Poi } from '../lib/poiApi';
+import { OVERNIGHT_POI_KINDS, type Bbox, type Poi, type PoiKind } from '../lib/poiApi';
 import { corridorTiles } from '../lib/routeCorridor';
+
+/** Overnight kinds + water so both the day planner and the "add water stops" action are fed. */
+const CORRIDOR_KINDS: readonly PoiKind[] = [...OVERNIGHT_POI_KINDS, 'spring'];
 
 /** Bounds how many upstream queries a long route triggers, and how many run at once (Overpass fair-use). */
 const MAX_TILES = 10;
@@ -39,8 +42,10 @@ async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) 
 export function useRouteShelters() {
   const route = useAppStore((s) => s.route);
   const autoOvernight = useAppStore((s) => s.routingOptions.autoOvernight);
+  const waterStops = useAppStore((s) => s.routingOptions.waterStops);
   const bufferMeters = useAppStore((s) => s.routingOptions.shelterBufferMeters);
   const setRouteShelters = useAppStore((s) => s.setRouteShelters);
+  const setRouteSprings = useAppStore((s) => s.setRouteSprings);
 
   const padDeg = Math.max(bufferMeters / 111_000, 0.02);
   const tiles = useMemo(
@@ -55,18 +60,20 @@ export function useRouteShelters() {
     queryKey: ['route-shelters', tiles.map(round2)],
     queryFn: async ({ signal }) => {
       const perTile = await mapLimit(tiles, TILE_CONCURRENCY, (tile) =>
-        getPois(tile, OVERNIGHT_POI_KINDS, signal).catch(() => [] as Poi[]),
+        getPois(tile, CORRIDOR_KINDS, signal).catch(() => [] as Poi[]),
       );
       const byId = new Map<string, Poi>();
       for (const list of perTile) for (const p of list) byId.set(p.id, p);
       return [...byId.values()];
     },
-    enabled: autoOvernight && tiles.length > 0,
+    enabled: (autoOvernight || waterStops) && tiles.length > 0,
     staleTime: 5 * 60_000,
     retry: false,
   });
 
   useEffect(() => {
-    setRouteShelters(query.data ?? []);
-  }, [query.data, setRouteShelters]);
+    const pois = query.data ?? [];
+    setRouteShelters(pois.filter((p) => p.kind !== 'spring'));
+    setRouteSprings(pois.filter((p) => p.kind === 'spring'));
+  }, [query.data, setRouteShelters, setRouteSprings]);
 }
