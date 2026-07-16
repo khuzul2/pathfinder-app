@@ -41,8 +41,7 @@ async function mapLimit<T, R>(items: readonly T[], limit: number, fn: (item: T) 
  */
 export function useRouteShelters() {
   const route = useAppStore((s) => s.route);
-  const autoOvernight = useAppStore((s) => s.routingOptions.autoOvernight);
-  const waterStops = useAppStore((s) => s.routingOptions.waterStops);
+  const overnightNonce = useAppStore((s) => s.overnightNonce);
   const bufferMeters = useAppStore((s) => s.routingOptions.shelterBufferMeters);
   const setRouteShelters = useAppStore((s) => s.setRouteShelters);
   const setRouteSprings = useAppStore((s) => s.setRouteSprings);
@@ -62,7 +61,9 @@ export function useRouteShelters() {
   );
 
   const query = useQuery({
-    queryKey: ['route-shelters', tiles.map(round2)],
+    // Nonce in the key so re-pressing "Plan overnight stays" forces a fresh fetch (e.g. to retry a
+    // rate-limited tile) even when the route + tiles are unchanged.
+    queryKey: ['route-shelters', overnightNonce, tiles.map(round2)],
     queryFn: async ({ signal }) => {
       const perTile = await mapLimit(tiles, TILE_CONCURRENCY, (tile) =>
         getPois(tile, CORRIDOR_KINDS, signal).catch(() => [] as Poi[]),
@@ -71,7 +72,7 @@ export function useRouteShelters() {
       for (const list of perTile) for (const p of list) byId.set(p.id, p);
       return [...byId.values()];
     },
-    enabled: (autoOvernight || waterStops) && tiles.length > 0,
+    enabled: overnightNonce > 0 && tiles.length > 0,
     staleTime: 5 * 60_000,
     retry: false,
   });

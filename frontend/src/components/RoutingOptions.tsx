@@ -46,12 +46,15 @@ const STAYS: { kind: StayType; label: string }[] = [
   { kind: 'bivvy', label: 'Bivvy' },
 ];
 
-/** User routing preferences: trail preference + auto overnight stays (with stay-type filter). */
+/** User routing preferences: trail preference + on-demand overnight planning (with stay-type filter). */
 export function RoutingOptions() {
   const routingOptions = useAppStore((s) => s.routingOptions);
   const setRoutingOptions = useAppStore((s) => s.setRoutingOptions);
   const sheltersLoading = useAppStore((s) => s.sheltersLoading);
-  const { avoidRoads, autoOvernight, stayTypes, shelterBufferMeters, waterStops } = routingOptions;
+  const overnightNonce = useAppStore((s) => s.overnightNonce);
+  const planOvernight = useAppStore((s) => s.planOvernight);
+  const hasRoute = useAppStore((s) => s.route != null);
+  const { avoidRoads, stayTypes, shelterBufferMeters, waterStops } = routingOptions;
 
   const toggleStay = (kind: StayType) =>
     setRoutingOptions({ stayTypes: { ...stayTypes, [kind]: !stayTypes[kind] } });
@@ -67,68 +70,70 @@ export function RoutingOptions() {
         onClick={() => setRoutingOptions({ avoidRoads: !avoidRoads })}
       />
       <Toggle
-        label="Auto overnight stays"
-        pressed={autoOvernight}
-        onClick={() => setRoutingOptions({ autoOvernight: !autoOvernight })}
+        label="Add water stops"
+        hint="(≥1 spring/day, after planning)"
+        pressed={waterStops}
+        onClick={() => setRoutingOptions({ waterStops: !waterStops })}
       />
 
-      {autoOvernight && (
-        <>
-          <div role="group" aria-label="Overnight stay types" className="ml-6 flex flex-wrap gap-1">
-            {STAYS.map(({ kind, label }) => (
+      <div className="mt-1 flex flex-col gap-1">
+        <span className="text-[11px] uppercase tracking-wide opacity-60">Overnight stays</span>
+        <div role="group" aria-label="Overnight stay types" className="flex flex-wrap gap-1">
+          {STAYS.map(({ kind, label }) => (
+            <button
+              key={kind}
+              type="button"
+              aria-pressed={stayTypes[kind]}
+              onClick={() => toggleStay(kind)}
+              className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
+                stayTypes[kind]
+                  ? 'bg-trail-green text-white'
+                  : 'bg-neutral-100 text-slate-accent/70 dark:bg-neutral-700 dark:text-neutral-300'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs opacity-60">Search radius</span>
+          <div role="group" aria-label="Shelter search radius" className="flex flex-wrap gap-1">
+            {SHELTER_BUFFER_OPTIONS.map((m) => (
               <button
-                key={kind}
+                key={m}
                 type="button"
-                aria-pressed={stayTypes[kind]}
-                onClick={() => toggleStay(kind)}
-                className={`rounded-full px-2.5 py-0.5 text-xs transition-colors ${
-                  stayTypes[kind]
+                aria-pressed={shelterBufferMeters === m}
+                onClick={() => setRoutingOptions({ shelterBufferMeters: m })}
+                className={`rounded px-1.5 py-0.5 text-xs tabular-nums transition-colors ${
+                  shelterBufferMeters === m
                     ? 'bg-trail-green text-white'
                     : 'bg-neutral-100 text-slate-accent/70 dark:bg-neutral-700 dark:text-neutral-300'
                 }`}
               >
-                {label}
+                {m < 1000 ? `${m}m` : `${m / 1000}km`}
               </button>
             ))}
           </div>
-          <div className="ml-6 mt-1 flex items-center gap-1.5">
-            <span className="text-xs opacity-60">Search radius</span>
-            <div role="group" aria-label="Shelter search radius" className="flex flex-wrap gap-1">
-              {SHELTER_BUFFER_OPTIONS.map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  aria-pressed={shelterBufferMeters === m}
-                  onClick={() => setRoutingOptions({ shelterBufferMeters: m })}
-                  className={`rounded px-1.5 py-0.5 text-xs tabular-nums transition-colors ${
-                    shelterBufferMeters === m
-                      ? 'bg-trail-green text-white'
-                      : 'bg-neutral-100 text-slate-accent/70 dark:bg-neutral-700 dark:text-neutral-300'
-                  }`}
-                >
-                  {m < 1000 ? `${m}m` : `${m / 1000}km`}
-                </button>
-              ))}
-            </div>
-          </div>
+        </div>
+        <button
+          type="button"
+          disabled={!hasRoute || sheltersLoading}
+          onClick={planOvernight}
+          className="mt-0.5 flex items-center justify-center gap-2 rounded-md border border-trail-green bg-trail-green/10 px-2 py-1.5 text-xs font-semibold text-trail-green transition-colors hover:bg-trail-green/20 disabled:opacity-50"
+        >
           {sheltersLoading && (
-            <div role="status" className="ml-6 mt-1 flex items-center gap-2 text-xs opacity-70">
-              <span
-                className="h-3 w-3 animate-spin rounded-full border-2 border-trail-green border-t-transparent"
-                aria-hidden="true"
-              />
-              Finding shelters along the route…
-            </div>
+            <span
+              className="h-3 w-3 animate-spin rounded-full border-2 border-trail-green border-t-transparent"
+              aria-hidden="true"
+            />
           )}
-        </>
-      )}
-
-      <Toggle
-        label="Add water stops"
-        hint="(≥1 spring/day)"
-        pressed={waterStops}
-        onClick={() => setRoutingOptions({ waterStops: !waterStops })}
-      />
+          {sheltersLoading
+            ? 'Finding stays…'
+            : overnightNonce > 0
+              ? '🔄 Re-plan overnight stays'
+              : '🏕️ Plan overnight stays'}
+        </button>
+      </div>
     </section>
   );
 }

@@ -10,8 +10,6 @@ export type StayType = 'hut' | 'camp' | 'hotel' | 'guesthouse' | 'bivvy';
 export interface RoutingOptions {
   /** Prefer trails/paths, avoiding vehicle-traffic roads as much as possible. */
   avoidRoads: boolean;
-  /** Automatically insert overnight stops on multi-day routes. */
-  autoOvernight: boolean;
   /** Which overnight stop types are acceptable (bivvy = wild camp anywhere). */
   stayTypes: Record<StayType, boolean>;
   /** How far off the route (metres) a shelter may sit and still count as an overnight stop. */
@@ -25,7 +23,6 @@ export const SHELTER_BUFFER_OPTIONS = [500, 1000, 1500, 2000, 2500] as const;
 
 export const DEFAULT_ROUTING_OPTIONS: RoutingOptions = {
   avoidRoads: true,
-  autoOvernight: true,
   stayTypes: { hut: true, camp: true, hotel: false, guesthouse: false, bivvy: false },
   shelterBufferMeters: 1000,
   waterStops: false,

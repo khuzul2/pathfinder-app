@@ -22,6 +22,7 @@ export function DaySlicer() {
   const setWaypoints = useAppStore((s) => s.setWaypoints);
   const routeSprings = useAppStore((s) => s.routeSprings);
   const waterStopsOn = useAppStore((s) => s.routingOptions.waterStops);
+  const sheltersLoading = useAppStore((s) => s.sheltersLoading);
 
   // Preview the one-shot stop insertions (memoized — these scan the route geometry). Each self-hides
   // once its stops are already on the route, so pressing it can never loop.
@@ -72,11 +73,12 @@ export function DaySlicer() {
         </div>
       </div>
 
-      {plan?.warnings.map((w) => (
-        <p key={w} role="note" className="mt-1 text-xs text-hazard-coral">
-          {w}
-        </p>
-      ))}
+      {!sheltersLoading &&
+        plan?.warnings.map((w) => (
+          <p key={w} role="note" className="mt-1 text-xs text-hazard-coral">
+            {w}
+          </p>
+        ))}
 
       {multiDay && (
         <ol className="mt-2 flex flex-col gap-1">

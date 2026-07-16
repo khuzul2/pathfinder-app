@@ -4,8 +4,17 @@ import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RoutingOptions } from './RoutingOptions';
 import { useAppStore } from '../state/store';
+import type { RouteAnalysis } from '../lib/route';
 
 const initial = useAppStore.getState();
+
+const route = {
+  points: [{}, {}],
+  distanceMeters: 0,
+  ascentMeters: 0,
+  descentMeters: 0,
+  movingSeconds: 0,
+} as unknown as RouteAnalysis;
 
 describe('RoutingOptions', () => {
   beforeEach(() => useAppStore.setState(initial, true));
@@ -19,13 +28,10 @@ describe('RoutingOptions', () => {
     expect(toggle).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('shows stay-type chips only while auto overnight is on', async () => {
+  it('always shows the overnight stay-type chips', () => {
     render(<RoutingOptions />);
-    // auto overnight defaults on → chips visible
     expect(screen.getByRole('button', { name: /^bivvy$/i })).toBeInTheDocument();
-    await userEvent.click(screen.getByRole('button', { name: /auto overnight stays/i }));
-    expect(useAppStore.getState().routingOptions.autoOvernight).toBe(false);
-    expect(screen.queryByRole('button', { name: /^bivvy$/i })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^huts$/i })).toBeInTheDocument();
   });
 
   it('multi-selects overnight stay types', async () => {
@@ -35,5 +41,18 @@ describe('RoutingOptions', () => {
     expect(useAppStore.getState().routingOptions.stayTypes.bivvy).toBe(true);
     await userEvent.click(screen.getByRole('button', { name: /^huts$/i }));
     expect(useAppStore.getState().routingOptions.stayTypes.hut).toBe(false);
+  });
+
+  it('disables the plan button until a route exists', () => {
+    render(<RoutingOptions />);
+    expect(screen.getByRole('button', { name: /plan overnight stays/i })).toBeDisabled();
+  });
+
+  it('plans overnight stays on demand when a route exists', async () => {
+    useAppStore.setState({ route });
+    render(<RoutingOptions />);
+    expect(useAppStore.getState().overnightNonce).toBe(0);
+    await userEvent.click(screen.getByRole('button', { name: /plan overnight stays/i }));
+    expect(useAppStore.getState().overnightNonce).toBe(1);
   });
 });

@@ -99,6 +99,12 @@ export interface AppState {
   /** True while the route-corridor shelter/spring fetch is in flight (drives overnight feedback). */
   sheltersLoading: boolean;
   setSheltersLoading: (loading: boolean) => void;
+  /**
+   * 0 = overnight stays not planned. Bumped by the explicit "Plan overnight stays" action to fetch
+   * shelters + compute the day itinerary on demand (re-pressing recomputes). Reset on a fresh route.
+   */
+  overnightNonce: number;
+  planOvernight: () => void;
   poiFilters: Record<PoiKind, boolean>;
   togglePoiFilter: (kind: PoiKind) => void;
 
@@ -209,6 +215,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       slicePlan: null,
       forcedStopIds: [],
       routeImported: false,
+      overnightNonce: 0,
     }),
 
   route: null,
@@ -273,6 +280,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   setRouteSprings: (routeSprings) => set({ routeSprings }),
   sheltersLoading: false,
   setSheltersLoading: (sheltersLoading) => set({ sheltersLoading }),
+  overnightNonce: 0,
+  planOvernight: () => set((state) => ({ overnightNonce: state.overnightNonce + 1 })),
   // The three core categories show by default; the rest are opt-in via the layer toggles so the
   // map isn't flooded (peaks especially are dense in the Alps).
   poiFilters: {
@@ -331,6 +340,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       forcedStopIds: [],
       currentRouteId: null,
       routeImported: false,
+      overnightNonce: 0,
     }),
 
   openRoute: (id) => {
