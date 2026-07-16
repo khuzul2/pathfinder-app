@@ -13,9 +13,10 @@ import { useAppStore } from '../state/store';
 import { MAP_STYLE, DEFAULT_CENTER, DEFAULT_ZOOM } from '../lib/mapConfig';
 import { buildRadarTileUrl, RADAR_MAX_ZOOM } from '../lib/radar';
 import { POI_META } from '../lib/poiApi';
-import type { Poi } from '../lib/poiApi';
+import type { Poi, PoiKind } from '../lib/poiApi';
 import { haversineMeters } from '../lib/geo';
-import { segmentForHover } from '../lib/routeInsert';
+import { segmentForHover, type RouteSegment } from '../lib/routeInsert';
+import { findPoiOnSegment, type SegmentFind, type SegmentPoi } from '../lib/segmentFind';
 import { sampleWaypoints, TRAIL_IMPORT_STOPS } from '../lib/trailGeometry';
 import { importHikeRoute } from '../services/trailImport';
 import { reverseGeocode } from '../services/geocodeClient';
@@ -107,14 +108,56 @@ function insertStopAt(lng: number, lat: number): void {
   });
 }
 
-/** The small "+" handle shown on the route to insert a via-stop. */
-function buildInsertHandle(): HTMLDivElement {
-  const el = document.createElement('div');
-  el.style.cssText =
-    'display:flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:9999px;background:#fff;border:2px solid #1A73E8;color:#1A73E8;font:700 15px system-ui,sans-serif;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,0.4);cursor:pointer;';
-  el.textContent = '+';
-  el.title = 'Click to add a stop here';
+/** A small round handle button (used for the on-route insert / find-stay / find-water actions). */
+function buildHandleButton(label: string, title: string, color: string): HTMLButtonElement {
+  const el = document.createElement('button');
+  el.type = 'button';
+  el.style.cssText = `display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:9999px;background:#fff;border:2px solid ${color};color:${color};font:700 13px system-ui,sans-serif;line-height:1;box-shadow:0 1px 3px rgba(0,0,0,0.4);cursor:pointer;padding:0;`;
+  el.textContent = label;
+  el.title = title;
   return el;
+}
+
+/** Overnight-capable POIs (corridor shelters + visible POI layer), limited to the enabled stay types. */
+function overnightCandidates(): SegmentPoi[] {
+  const store = useAppStore.getState();
+  const { stayTypes } = store.routingOptions;
+  const enabled = new Set<PoiKind>();
+  if (stayTypes.hut) enabled.add('alpine_hut');
+  if (stayTypes.camp) enabled.add('camp_site');
+  if (stayTypes.hotel) enabled.add('hotel');
+  if (stayTypes.guesthouse) enabled.add('guesthouse');
+  const byId = new Map<string, SegmentPoi>();
+  const add = (p: Poi) => {
+    if (enabled.has(p.kind))
+      byId.set(p.id, { id: p.id, lng: p.lng, lat: p.lat, name: p.name, kind: p.kind });
+  };
+  store.routeShelters.forEach(add);
+  store.pois.forEach(add);
+  return [...byId.values()];
+}
+
+/** Water sources (corridor springs + any visible spring POIs), as leg-find candidates. */
+function waterCandidates(): SegmentPoi[] {
+  const store = useAppStore.getState();
+  const byId = new Map<string, SegmentPoi>();
+  const add = (p: Poi) => {
+    if (p.kind === 'spring')
+      byId.set(p.id, { id: p.id, lng: p.lng, lat: p.lat, name: p.name, kind: p.kind });
+  };
+  store.routeSprings.forEach(add);
+  store.pois.forEach(add);
+  return [...byId.values()];
+}
+
+/** Drop a found shelter/spring into the route as a stop at the hovered leg's insert position. */
+function insertFoundStop(found: SegmentFind, insertAt: number): void {
+  const label = POI_META[found.poi.kind as PoiKind]?.label ?? 'Stop';
+  useAppStore.getState().insertWaypoint(insertAt, {
+    lng: found.poi.lng,
+    lat: found.poi.lat,
+    name: found.poi.name ?? label,
+  });
 }
 
 /** Adopt a community hike as the current route: snap its real geometry faithfully, or fall back. */
@@ -255,6 +298,11 @@ export function MapCanvas() {
   const readyRef = useRef(false);
   const hoveredAltRef = useRef<number | null>(null);
   const insertMarkerRef = useRef<Marker | null>(null);
+  const insertHandleElRef = useRef<HTMLDivElement | null>(null);
+  const handleSigRef = useRef<string>('');
+  const hoverSegRef = useRef<RouteSegment | null>(null);
+  const foundShelterRef = useRef<SegmentFind | null>(null);
+  const foundWaterRef = useRef<SegmentFind | null>(null);
   const markersRef = useRef<Marker[]>([]);
   const poiMarkersRef = useRef<Marker[]>([]);
   const poiPopupRef = useRef<Popup | null>(null);
@@ -421,6 +469,9 @@ export function MapCanvas() {
           const clearInsertHint = () => {
             (map.getSource(INSERT_SOURCE) as GeoJSONSource | undefined)?.setData(EMPTY_FC);
             insertMarkerRef.current?.remove();
+            hoverSegRef.current = null;
+            foundShelterRef.current = null;
+            foundWaterRef.current = null;
           };
 
           map.on('mousemove', ROUTES_LAYER, (e) => {
@@ -462,14 +513,71 @@ export function MapCanvas() {
                 },
               ],
             });
+
+            // Look for a shelter / water source sitting ON this leg so the handles can offer to
+            // pull it in as a stop (like the existing "+" insert-here handle, but data-driven).
+            hoverSegRef.current = seg;
+            const buffer = store.routingOptions.shelterBufferMeters;
+            foundShelterRef.current = findPoiOnSegment(
+              store.route.points,
+              seg.segStart,
+              seg.segEnd,
+              overnightCandidates(),
+              buffer,
+            );
+            foundWaterRef.current = findPoiOnSegment(
+              store.route.points,
+              seg.segStart,
+              seg.segEnd,
+              waterCandidates(),
+              Math.max(buffer, 1500),
+            );
+
             if (!insertMarkerRef.current && mapboxRef.current) {
-              const handle = buildInsertHandle();
-              handle.addEventListener('click', (ev) => {
+              const el = document.createElement('div');
+              el.style.cssText = 'display:flex;gap:4px;align-items:center;';
+              insertHandleElRef.current = el;
+              insertMarkerRef.current = new mapboxRef.current.Marker({ element: el });
+            }
+            // Rebuild the button row only when the available actions change (keeps it stable while the
+            // cursor moves onto it to click); the click handlers read the refs live, so the target is
+            // always current.
+            const sig = `+${foundShelterRef.current ? 'S' : ''}${foundWaterRef.current ? 'W' : ''}`;
+            const el = insertHandleElRef.current;
+            if (el && handleSigRef.current !== sig) {
+              handleSigRef.current = sig;
+              el.replaceChildren();
+              const plus = buildHandleButton('+', 'Add a stop here', '#1A73E8');
+              plus.addEventListener('click', (ev) => {
                 ev.stopPropagation();
                 const ll = insertMarkerRef.current?.getLngLat();
                 if (ll) insertStopAt(ll.lng, ll.lat);
               });
-              insertMarkerRef.current = new mapboxRef.current.Marker({ element: handle });
+              el.appendChild(plus);
+              if (foundShelterRef.current) {
+                const stay = buildHandleButton(
+                  '🏕️',
+                  'Find an overnight stay on this leg',
+                  '#0F9D58',
+                );
+                stay.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  const f = foundShelterRef.current;
+                  const s = hoverSegRef.current;
+                  if (f && s) insertFoundStop(f, s.insertAt);
+                });
+                el.appendChild(stay);
+              }
+              if (foundWaterRef.current) {
+                const w = buildHandleButton('💧', 'Find a water source on this leg', '#00A3BF');
+                w.addEventListener('click', (ev) => {
+                  ev.stopPropagation();
+                  const f = foundWaterRef.current;
+                  const s = hoverSegRef.current;
+                  if (f && s) insertFoundStop(f, s.insertAt);
+                });
+                el.appendChild(w);
+              }
             }
             insertMarkerRef.current?.setLngLat([e.lngLat.lng, e.lngLat.lat]).addTo(map);
           });
