@@ -293,3 +293,25 @@ one-shot per-day action that reroutes through the nearest reachable spring for a
 within ~150 m of water (springs come from the same corridor fetch). **Consequences:** overnight +
 water planning works on continental routes; import geometry is faithful; costs stay bounded (only
 long routes tile/chunk, capped + concurrency-limited; day-plan previews are memoized).
+
+## ADR-022 — Overnight UX made explicit + on-demand (plan button, hours range, on-map find handles)
+**Status:** Accepted (2026-07-16), refines ADR-021. **Context:** overnight planning was reactive —
+any stay-type/`autoOvernight` change re-fetched the whole corridor and re-sliced, the "no shelters
+within reach" warning flashed mid-fetch, hours/day was a single target, POI layers looked stuck at
+the origin, and there was no way to pull a specific shelter/spring onto a leg. **Decisions:**
+(1) **Explicit trigger** — drop `autoOvernight`; add a store `overnightNonce` bumped by a
+`planOvernight()` action. `useRouteShelters` and `useDayPlan` gate on `overnightNonce > 0` (nonce in
+the shelter query key so re-pressing forces a fresh fetch), so no corridor fetch or slice happens
+until the user presses "Plan overnight stays". The DaySlicer hides plan warnings while
+`sheltersLoading`. (2) **Hours range** — `targetHours` → `hoursRange {min,max}` (default 4–8h, mid
+6h); `planDays` gains `minSeconds`/`maxSeconds` (aims mid-band, max is the soft cap) and flags each
+`DaySegment.outsideRange`; the DaySlicer shows dual sliders and a per-day "outside your N–Mh range"
+note. Legacy target/cap callers are unchanged. (3) **Refresh layers** — the "Search this area"
+control is always offered (emphasised when the view drifts, subtle otherwise) and raised above the
+busy pill, so viewport layers reload for wherever the user pans without auto-refetching on every
+move. (4) **On-map find handles** — `lib/segmentFind.ts` (`findPoiOnSegment`, padded-bbox prefilter,
+picks the candidate nearest the leg middle) backs 🏕️/💧 handles that appear beside the "+" insert
+handle when a shelter/spring sits on the hovered leg, inserting it as a stop. **Consequences:**
+overnight planning is deliberate and quiet until asked; the itinerary respects a comfort band and
+marks unavoidable outliers; layer freshness is user-controlled; shelters/water can be added leg-by-leg
+on the map — all from already-fetched data (no extra API load).

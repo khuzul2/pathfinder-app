@@ -157,6 +157,21 @@ Legend: `[ ]` todo · `[x]` done (gate green) · `[~]` in progress · `[!]` bloc
 
 ---
 
+## Phase 10 — Overnight & discovery UX (from live QA; ADR-020/021/022)
+
+- [x] **P10-1..4** Expanded POI categories + toggle list; auto-insert overnight stops and rebuild
+      the route through them; "add water stops"; Waymarked Trails search + "make this your hike"
+      (Wikiloc dropped — no API keys). ADR-020.
+- [x] **P10-fix** Overnight shelter coverage on continental routes (corridor tiling), routing
+      feedback, faithful trail import, soft cap, water stops. ADR-021.
+- [x] **P11** Overnight UX redesign (ADR-022): explicit on-demand **Plan overnight stays** button
+      (`overnightNonce`/`planOvernight`; drop `autoOvernight`; warnings hidden while loading);
+      **hours/day range** (`hoursRange` + `planDays` min/max band + per-day `outsideRange`
+      marking); always-available **"refresh layers in this area"** control; on-map
+      **find-overnight-stay / find-water** handles on a hovered leg (`lib/segmentFind.ts`).
+
+---
+
 ## Human-confirmation items — RESOLVED (see ADR-009 / ADR-008a)
 - [x] **HC-1..HC-4** Calibration constants accepted as sensible defaults (ADR-009); the
       values in `constants.ts` are authoritative. Optional P3 follow-up: calibrate against
