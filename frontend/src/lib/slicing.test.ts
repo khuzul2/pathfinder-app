@@ -100,6 +100,44 @@ describe('planDays', () => {
     expect(plan.days[0]!.endIndex).toBe(4);
   });
 
+  describe('desired hours/day range', () => {
+    it('aims for the middle of the band and flags no day when all legs fit', () => {
+      // 12 h route, shelters every 4 h; band 4–8 h aims for 6 h → two ~6 h days, both in range.
+      const route = makeRoute([0, 2, 4, 6, 8, 10, 12]);
+      const plan = planDays(route, [shelterAt(2, 'h4'), shelterAt(3, 'h6'), shelterAt(4, 'h8')], {
+        minSeconds: 4 * H,
+        maxSeconds: 8 * H,
+      });
+      expect(plan.days).toHaveLength(2);
+      expect(plan.days[0]!.endIndex).toBe(3); // 6 h — the mid-band ideal
+      plan.days.forEach((d) => expect(d.outsideRange).toBe(false));
+    });
+
+    it('flags a leg that is forced longer than the band max', () => {
+      // 20 h route; the only shelter sits at 9 h, past the 8 h band max → day 1 flagged out of range.
+      const route = makeRoute([0, 3, 6, 9, 12, 15, 18, 20]);
+      const plan = planDays(route, [shelterAt(3, 'hut9')], {
+        minSeconds: 4 * H,
+        maxSeconds: 8 * H,
+      });
+      expect(plan.days).toHaveLength(2);
+      expect(plan.days[0]!.movingSeconds).toBeCloseTo(9 * H, 0);
+      expect(plan.days[0]!.outsideRange).toBe(true);
+    });
+
+    it('flags a leg that is shorter than the band min', () => {
+      // 10 h route split at the 8 h shelter → a 2 h finish leg, below the 4 h band min.
+      const route = makeRoute([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+      const plan = planDays(route, [shelterAt(8, 'hut8')], {
+        minSeconds: 4 * H,
+        maxSeconds: 8 * H,
+      });
+      const last = plan.days[plan.days.length - 1]!;
+      expect(last.movingSeconds).toBeLessThan(4 * H);
+      expect(last.outsideRange).toBe(true);
+    });
+  });
+
   describe('bivvy (wild camp anywhere)', () => {
     it('splits a shelterless over-cap route into wild-camp days at the ideal spacing', () => {
       const route = makeRoute([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]); // 10 h

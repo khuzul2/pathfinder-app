@@ -42,6 +42,7 @@ describe('TOBLER parameters', () => {
 
 describe('SLICING defaults', () => {
   it('keep a day under its hard cap and inflate for breaks', () => {
+    expect(SLICING.minHoursPerDay).toBeLessThanOrEqual(SLICING.targetHoursPerDay);
     expect(SLICING.targetHoursPerDay).toBeLessThanOrEqual(SLICING.maxHoursPerDay);
     expect(SLICING.breakFactor).toBeGreaterThan(1);
     expect(SLICING.shelterBufferMeters).toBeGreaterThan(0);

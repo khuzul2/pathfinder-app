@@ -24,6 +24,8 @@ export interface DaySegment {
   distanceMeters: number;
   /** The shelter this day ends at (null for the final day, which ends at the route end). */
   shelterAtEnd: Shelter | null;
+  /** True when this leg falls outside the user's desired hours/day band (shorter or longer). */
+  outsideRange?: boolean;
 }
 
 export interface SlicePlan {
@@ -34,6 +36,10 @@ export interface SlicePlan {
 export interface SliceOptions {
   targetSeconds?: number;
   capSeconds?: number;
+  /** Lower edge of the desired hours/day band; days shorter than this are flagged `outsideRange`. */
+  minSeconds?: number;
+  /** Upper edge of the desired hours/day band; when set it is the (soft) cap and the DP aims mid-band. */
+  maxSeconds?: number;
   bufferMeters?: number;
   /** Allow ending a day anywhere on the route (a wild camp) when no shelter sits near the ideal. */
   allowBivvy?: boolean;
@@ -82,16 +88,19 @@ function makeDay(
   end: number,
   points: readonly RoutePoint[],
   shelter: Shelter | null,
+  band?: { min: number; max: number },
 ): DaySegment {
   const s = points[start] as RoutePoint;
   const e = points[end] as RoutePoint;
+  const movingSeconds = e.timeSeconds - s.timeSeconds;
   return {
     index,
     startIndex: start,
     endIndex: end,
-    movingSeconds: e.timeSeconds - s.timeSeconds,
+    movingSeconds,
     distanceMeters: e.distanceMeters - s.distanceMeters,
     shelterAtEnd: shelter,
+    outsideRange: band ? movingSeconds > band.max + 1 || movingSeconds < band.min - 1 : false,
   };
 }
 
@@ -106,8 +115,15 @@ export function planDays(
   shelters: readonly Shelter[],
   options: SliceOptions = {},
 ): SlicePlan {
-  const target = options.targetSeconds ?? SLICING.targetHoursPerDay * 3600;
-  const cap = options.capSeconds ?? SLICING.maxHoursPerDay * 3600;
+  // Range mode: when the caller gives a min/max band, aim for the middle of it and treat the max as
+  // the (soft) cap. Legacy callers still pass targetSeconds/capSeconds and behave exactly as before.
+  const hasBand = options.minSeconds != null || options.maxSeconds != null;
+  const cap = options.capSeconds ?? options.maxSeconds ?? SLICING.maxHoursPerDay * 3600;
+  const min = options.minSeconds ?? 0;
+  const max = options.maxSeconds ?? cap;
+  const target =
+    options.targetSeconds ?? (hasBand ? (min + max) / 2 : SLICING.targetHoursPerDay * 3600);
+  const band = hasBand ? { min, max } : undefined;
   const buffer = options.bufferMeters ?? SLICING.shelterBufferMeters;
 
   if (points.length < 2) return { days: [], warnings: ['Route is too short to slice.'] };
@@ -116,7 +132,7 @@ export function planDays(
   const total = (points[lastIndex] as RoutePoint).timeSeconds;
 
   if (total <= cap) {
-    return { days: [makeDay(0, 0, lastIndex, points, null)], warnings: [] };
+    return { days: [makeDay(0, 0, lastIndex, points, null, band)], warnings: [] };
   }
 
   const allowBivvy = options.allowBivvy ?? false;
@@ -180,7 +196,7 @@ export function planDays(
 
   const chosen = solve(true) ?? solve(false);
   if (!chosen) {
-    return { days: [makeDay(0, 0, lastIndex, points, null)], warnings: [] };
+    return { days: [makeDay(0, 0, lastIndex, points, null, band)], warnings: [] };
   }
 
   const days: DaySegment[] = [];
@@ -191,7 +207,7 @@ export function planDays(
       end === lastIndex
         ? null
         : (shelterByIndex.get(end) ?? (allowBivvy ? bivvyAt(points, end) : null));
-    days.push(makeDay(d, start, end, points, shelter));
+    days.push(makeDay(d, start, end, points, shelter, band));
   }
 
   const warnings: string[] = [];

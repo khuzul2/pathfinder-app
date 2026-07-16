@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { DaySlicer } from './DaySlicer';
 import { useAppStore } from '../state/store';
 import type { RouteAnalysis } from '../lib/route';
@@ -56,10 +55,30 @@ describe('DaySlicer', () => {
     expect(screen.getByText(/Finish/)).toBeInTheDocument();
   });
 
-  it('changes the target hours via the control', async () => {
+  it('adjusts the desired hours/day range via the sliders', () => {
     useAppStore.setState({ route, slicePlan: twoDayPlan });
     render(<DaySlicer />);
-    await userEvent.click(screen.getByRole('button', { name: '8h' }));
-    expect(useAppStore.getState().targetHours).toBe(8);
+    const min = screen.getByRole('slider', { name: /minimum hours per day/i });
+    fireEvent.change(min, { target: { value: '3' } });
+    expect(useAppStore.getState().hoursRange.min).toBe(3);
+    const max = screen.getByRole('slider', { name: /maximum hours per day/i });
+    fireEvent.change(max, { target: { value: '12' } });
+    expect(useAppStore.getState().hoursRange.max).toBe(12);
+  });
+
+  it('flags a day that falls outside the desired range', () => {
+    useAppStore.setState({
+      route,
+      slicePlan: {
+        days: [
+          { ...twoDayPlan.days[0]!, movingSeconds: 12 * 3600, outsideRange: true },
+          twoDayPlan.days[1]!,
+        ],
+        warnings: [],
+      },
+      hoursRange: { min: 4, max: 8 },
+    });
+    render(<DaySlicer />);
+    expect(screen.getByText(/Longer than your 4–8h range/i)).toBeInTheDocument();
   });
 });

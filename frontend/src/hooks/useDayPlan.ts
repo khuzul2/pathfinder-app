@@ -23,7 +23,7 @@ function stayEnabled(kind: string, stayTypes: RoutingOptions['stayTypes']): bool
 export function useDayPlan() {
   const route = useAppStore((s) => s.route);
   const routeShelters = useAppStore((s) => s.routeShelters);
-  const targetHours = useAppStore((s) => s.targetHours);
+  const hoursRange = useAppStore((s) => s.hoursRange);
   const forcedStopIds = useAppStore((s) => s.forcedStopIds);
   const routingOptions = useAppStore((s) => s.routingOptions);
   const overnightNonce = useAppStore((s) => s.overnightNonce);
@@ -45,7 +45,8 @@ export function useDayPlan() {
     }
     setSlicePlan(
       planDays(route.points, shelters, {
-        targetSeconds: targetHours * 3600,
+        minSeconds: hoursRange.min * 3600,
+        maxSeconds: hoursRange.max * 3600,
         bufferMeters: routingOptions.shelterBufferMeters,
         allowBivvy: stayTypes.bivvy,
       }),
@@ -53,7 +54,7 @@ export function useDayPlan() {
   }, [
     route,
     routeShelters,
-    targetHours,
+    hoursRange,
     forcedStopIds,
     routingOptions,
     overnightNonce,

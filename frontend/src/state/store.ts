@@ -125,9 +125,9 @@ export interface AppState {
   hikeLoading: boolean;
   setHikeLoading: (loading: boolean) => void;
 
-  /** Target moving hours per day for the slicer. */
-  targetHours: number;
-  setTargetHours: (hours: number) => void;
+  /** Desired moving-hours-per-day band for the slicer (inclusive). Days outside it are flagged. */
+  hoursRange: { min: number; max: number };
+  setHoursRange: (range: { min: number; max: number }) => void;
 
   /** Shelters the user pinned as preferred nightover stops (empty = auto-pick from all). */
   forcedStopIds: string[];
@@ -309,8 +309,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   hikeLoading: false,
   setHikeLoading: (hikeLoading) => set({ hikeLoading }),
 
-  targetHours: SLICING.targetHoursPerDay,
-  setTargetHours: (targetHours) => set({ targetHours }),
+  hoursRange: { min: SLICING.minHoursPerDay, max: SLICING.maxHoursPerDay },
+  setHoursRange: (hoursRange) => set({ hoursRange }),
 
   forcedStopIds: [],
   toggleForcedStop: (id) =>

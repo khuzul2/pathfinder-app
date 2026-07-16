@@ -85,6 +85,8 @@ export const LAYER_SEARCH_MIN_ZOOM = 9;
 export const SLICING = {
   /** Target moving hours per day. */
   targetHoursPerDay: 6,
+  /** Lower edge of the default desired hours/day band. */
+  minHoursPerDay: 4,
   /** Hard cap on a single day's moving time (hours). */
   maxHoursPerDay: 8,
   /** Break/rest inflation multiplier applied to moving time. */
