@@ -14,7 +14,7 @@ export function BusyIndicator() {
   if (!message) return null;
 
   return (
-    <div className="pointer-events-none absolute left-1/2 top-4 z-30 -translate-x-1/2">
+    <div className="pointer-events-none absolute left-1/2 top-16 z-30 -translate-x-1/2">
       <span
         role="status"
         className="flex items-center gap-2 rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-slate-accent shadow-fab dark:bg-neutral-800/95 dark:text-neutral-100"

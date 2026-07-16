@@ -42,7 +42,7 @@ export function MapSearchControl() {
   if (!anyLayerOn || !viewportBbox) return null;
 
   const pill =
-    'pointer-events-auto rounded-full bg-white/95 px-4 py-2 text-sm font-medium text-slate-accent shadow-fab dark:bg-neutral-800/95 dark:text-neutral-100';
+    'pointer-events-auto rounded-full px-4 py-2 text-sm font-medium shadow-fab bg-white/95 text-slate-accent dark:bg-neutral-800/95 dark:text-neutral-100';
 
   let content: ReactNode = null;
   if (loading) {
@@ -58,17 +58,27 @@ export function MapSearchControl() {
         Zoom in to load hikes &amp; places
       </span>
     );
-  } else if (stale) {
+  } else {
+    // Always offer the refresh so the enabled layers can be reloaded for wherever the user has
+    // panned/zoomed to (they only auto-load once, at first enable). Emphasise it once the view has
+    // drifted from the loaded area so it reads as "your layers are stale, tap to update".
     content = (
-      <button type="button" onClick={searchArea} className={`${pill} hover:bg-white`}>
-        🔍 Search this area
+      <button
+        type="button"
+        onClick={searchArea}
+        className={
+          stale
+            ? `${pill} ring-2 ring-trail-green hover:bg-white`
+            : `${pill} opacity-80 hover:opacity-100`
+        }
+      >
+        {stale ? '🔍 Search this area' : '🔄 Refresh layers here'}
       </button>
     );
   }
 
-  if (!content) return null;
   return (
-    <div className="pointer-events-none absolute left-1/2 top-4 z-10 -translate-x-1/2">
+    <div className="pointer-events-none absolute left-1/2 top-4 z-20 -translate-x-1/2">
       {content}
     </div>
   );
